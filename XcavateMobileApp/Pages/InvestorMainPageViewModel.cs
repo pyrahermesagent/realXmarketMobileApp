@@ -144,6 +144,9 @@ public partial class InvestorMainPageViewModel : ObservableObject
         OwnedButtonState = PlutoFramework.Components.Buttons.ButtonStateEnum.GrayEnabled;
         BoughtButtonState = PlutoFramework.Components.Buttons.ButtonStateEnum.GrayEnabled;
 
+        // The popup view model is shared with the marketplace page; this page's
+        // investorProperties query has no state filter, so the section stays hidden here.
+        filterPopupViewModel.IsStateFilterVisible = false;
         filterPopupViewModel.IsVisible = true;
     }
 
