@@ -178,6 +178,8 @@
 
         <xcavateproperty:PropertyMarketplaceSelectionPopupView />
 
+        <xcavateproperty:SendSharesPopupView />
+
         <networkselect:MultiNetworkSelectView x:Name="networksView"  IsVisible="False" />
 
         <account:NoAccountPopup ZIndex="10" />
