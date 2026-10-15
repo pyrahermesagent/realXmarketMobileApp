@@ -374,3 +374,5 @@ GoogleService-Info.plist
 google-services.json
 
 realXmarketMobileApp.zip
+
+.whisper-venv/

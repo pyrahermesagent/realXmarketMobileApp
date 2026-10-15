@@ -9,6 +9,7 @@ using PlutoFrameworkCore.Solana;
 using PlutoFrameworkCore.Xcavate;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Numerics;
 using UniqueryPlus.Nfts;
 using NftKey = (UniqueryPlus.NftTypeEnum, System.Numerics.BigInteger, System.Numerics.BigInteger);
 using PropertyModel = PlutoFramework.Model.Xcavate.XcavatePropertyModel;
@@ -75,7 +76,15 @@ public partial class InvestorMainPageViewModel : ObservableObject
         // network switch re-reads it. Same singleton lifetime and no-unsubscribe convention
         // as the subscription above.
         SolanaNetworkModel.ClusterChanged += OnSolanaClusterChanged;
+
+        // Claim-all and the per-property "Claim rent" chips serialize through
+        // ClaimRentModel; the button mirrors its busy state. Same singleton
+        // no-unsubscribe convention as above.
+        ClaimRentModel.ClaimInProgressChanged += OnClaimInProgressChanged;
     }
+
+    private void OnClaimInProgressChanged(object? sender, EventArgs e) =>
+        MainThread.BeginInvokeOnMainThread(UpdateClaimAllButton);
 
     /// <summary>
     /// Runs on the main thread - the event already is - and fire-and-forget: the re-fetch
@@ -83,7 +92,16 @@ public partial class InvestorMainPageViewModel : ObservableObject
     /// isRefreshInProgress guard absorbs a concurrent pull-to-refresh.
     /// </summary>
     private void OnMarketplaceTransactionConfirmed(object? sender, EventArgs e) =>
-        MainThread.BeginInvokeOnMainThread(() => _ = RefreshAsync(CancellationToken.None));
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            // A confirmed marketplace transaction can move rent (a claim pulled it, a
+            // distribution added to it), so the cached income figures are
+            // pre-transaction ones. Cleared and re-scanned; the card keeps showing the
+            // old totals until the fresh scan lands - no fake zeroing.
+            InvalidateIncomeScan();
+            QueueIncomeLoad();
+            _ = RefreshAsync(CancellationToken.None);
+        });
 
     private void OnSolanaClusterChanged(object? sender, SolanaCluster cluster)
     {
@@ -92,6 +110,11 @@ public partial class InvestorMainPageViewModel : ObservableObject
         MainThread.BeginInvokeOnMainThread(() =>
         {
             OnPropertyChanged(nameof(NoOwnedPropertiesMessage));
+
+            // Income figures are per cluster (and wallet): the cache key would never
+            // match again anyway, so drop the old cluster's entries up front.
+            InvalidateIncomeScan();
+
             _ = RefreshAsync(CancellationToken.None);
         });
     }
@@ -308,6 +331,12 @@ public partial class InvestorMainPageViewModel : ObservableObject
                            !string.Equals(ownerAddress, selectedOwnerAddress, StringComparison.Ordinal) ||
                            !IsSameLoadedQuery(includesPropertyName, includesTownCity, includesPropertyType, OwnedActive, BoughtActive);
 
+        if (!string.Equals(ownerAddress, selectedOwnerAddress, StringComparison.Ordinal))
+        {
+            // A different wallet has no claim on the previous wallet's cached income.
+            MainThread.BeginInvokeOnMainThread(InvalidateIncomeScan);
+        }
+
         clientLoaded = true;
         ownerAddress = selectedOwnerAddress;
 
@@ -323,6 +352,10 @@ public partial class InvestorMainPageViewModel : ObservableObject
             await LoadMoreOwnedPropertiesAsync(token).ConfigureAwait(false);
             _ = HydrateRemainingOwnedPropertiesAsync(token);
         }
+
+        // Scan the (new) list for claimable rent. Cached entries are reused, so a
+        // pull-to-refresh costs an indexer read only for properties never scanned.
+        QueueIncomeLoad();
     }
 
     public Task TryLoadMoreOwnedPropertiesAsync(CancellationToken token) => LoadMoreOwnedPropertiesAsync(token);
@@ -369,6 +402,10 @@ public partial class InvestorMainPageViewModel : ObservableObject
                 token.ThrowIfCancellationRequested();
                 await LoadMoreOwnedPropertiesAsync(token).ConfigureAwait(false);
             }
+
+            // The income scan's first pass ran on the first page; queue another so the
+            // properties hydration added since are covered too (cached entries skip).
+            QueueIncomeLoad();
         }
         catch (OperationCanceledException)
         {
@@ -523,6 +560,7 @@ public partial class InvestorMainPageViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(NoOwnedProperties));
         OnPropertyChanged(nameof(ShowSkeleton));
+        OnPropertyChanged(nameof(RentCardIsVisible));
     }
 
     private void RecalculatePortfolioMetrics()
@@ -578,5 +616,344 @@ public partial class InvestorMainPageViewModel : ObservableObject
         lastLoadedOwned = OwnedActive;
         lastLoadedBought = BoughtActive;
         hasLoadedQuery = true;
+    }
+
+    // ── Rent available (income claims) ──
+
+    /// <summary>One mint's claimable amount on one property, in the mint's BASE units.</summary>
+    private sealed record ClaimableMint(string Mint, BigInteger Amount, int Decimals, string Symbol);
+
+    /// <summary>One owned property's claimable rent as the last scan computed it.</summary>
+    private sealed record ClaimableIncomeEntry(long AssetId, string PropertyName, IReadOnlyList<ClaimableMint> Claimables);
+
+    /// <summary>
+    /// Per-asset income scan results, keyed by (cluster, assetId, wallet) so a
+    /// pull-to-refresh reuses them and only a wallet/cluster switch - or a confirmed
+    /// marketplace transaction - invalidates. Mutated on the main thread only.
+    /// </summary>
+    private readonly Dictionary<(SolanaCluster Cluster, long AssetId, string Wallet), ClaimableIncomeEntry> claimableByProperty = [];
+
+    /// <summary>Mint decimals by (cluster, mint), resolved once per mint per session.</summary>
+    private readonly Dictionary<(SolanaCluster Cluster, string Mint), int> incomeMintDecimals = [];
+
+    private readonly object incomeLoadLock = new();
+    private bool incomeLoadRunning;
+    private bool incomeLoadQueued;
+
+    /// <summary>True while any scanned property shows claimable rent (main thread only).</summary>
+    private bool hasClaimableRentTotal;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RentCardIsVisible))]
+    private bool rentLoadSettled;
+
+    [ObservableProperty]
+    private string rentTotalText = "";
+
+    [ObservableProperty]
+    private string claimAllButtonText = "Claim all";
+
+    [ObservableProperty]
+    private PlutoFramework.Components.Buttons.ButtonStateEnum claimAllButtonState =
+        PlutoFramework.Components.Buttons.ButtonStateEnum.Disabled;
+
+    /// <summary>
+    /// The card stays hidden until the wallet owns anything; while the scan runs it
+    /// shows progress, and once the scan settles it survives only if there is rent to
+    /// claim - an all-zero result hides it rather than showing an empty card.
+    /// </summary>
+    public bool RentCardIsVisible => OwnedProperties.Count > 0 && (!RentLoadSettled || hasClaimableRentTotal);
+
+    /// <summary>
+    /// Drops every cached income figure and returns the card to its pre-scan state.
+    /// Main thread only (the callers marshal).
+    /// </summary>
+    private void InvalidateIncomeScan()
+    {
+        claimableByProperty.Clear();
+        hasClaimableRentTotal = false;
+        RentTotalText = "";
+        RentLoadSettled = false;
+        OnPropertyChanged(nameof(RentCardIsVisible));
+        UpdateClaimAllButton();
+    }
+
+    /// <summary>
+    /// Schedules an income-scan pass. Passes never overlap: a request made while one is
+    /// running is remembered and folded into a follow-up pass, so properties that
+    /// arrived mid-pass are still scanned.
+    /// </summary>
+    private void QueueIncomeLoad()
+    {
+        lock (incomeLoadLock)
+        {
+            if (incomeLoadRunning)
+            {
+                incomeLoadQueued = true;
+                return;
+            }
+
+            incomeLoadRunning = true;
+        }
+
+        _ = RunIncomeLoadLoopAsync();
+    }
+
+    private async Task RunIncomeLoadLoopAsync()
+    {
+        try
+        {
+            while (true)
+            {
+                await LoadClaimableRentPassAsync().ConfigureAwait(false);
+
+                lock (incomeLoadLock)
+                {
+                    if (!incomeLoadQueued)
+                    {
+                        incomeLoadRunning = false;
+                        break;
+                    }
+
+                    incomeLoadQueued = false;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Claimable-rent scan failed:");
+            Console.WriteLine(ex);
+
+            lock (incomeLoadLock)
+            {
+                incomeLoadRunning = false;
+                incomeLoadQueued = false;
+            }
+        }
+
+        // Settled either way: a failed scan must not pin the card on "Checking…"
+        // forever; whatever did load is what the card shows.
+        await MainThread.InvokeOnMainThreadAsync(() =>
+        {
+            RentLoadSettled = true;
+            UpdateRentCard();
+        });
+    }
+
+    /// <summary>
+    /// One scan pass over the owned list: cached properties are re-applied to their
+    /// (possibly rebuilt) thumbnails, unscanned ones are fetched from the indexer -
+    /// income state and the holding's share count - at most three in flight. Each
+    /// property's result lands on the card the moment it resolves, so totals fill in
+    /// live. A property that fails to read is skipped (logged), keeping whatever it
+    /// showed before.
+    /// </summary>
+    private async Task LoadClaimableRentPassAsync()
+    {
+        var cluster = SolanaNetworkModel.SelectedCluster;
+        var wallet = ownerAddress;
+
+        if (string.IsNullOrWhiteSpace(wallet) || !XcavateDeploymentModel.IsDeployed(cluster))
+        {
+            return;
+        }
+
+        var snapshot = await MainThread.InvokeOnMainThreadAsync(() => OwnedProperties.ToList());
+
+        var targets = snapshot
+            .Select(wrapper => (Wrapper: wrapper, Listing: wrapper.NftBase as XcavateSolanaListingNft))
+            .Where(target => target.Listing is not null)
+            .ToList();
+
+        // Cached entries are reused - only their chip flags need re-applying, since the
+        // list rebuild creates fresh wrapper instances on a wallet-cluster reload path.
+        foreach (var target in targets)
+        {
+            if (claimableByProperty.TryGetValue((cluster, target.Listing!.AssetId, wallet), out var cached))
+            {
+                var wrapper = target.Wrapper;
+                var hasClaimable = cached.Claimables.Count > 0;
+                await MainThread.InvokeOnMainThreadAsync(() => wrapper.HasClaimableRent = hasClaimable);
+            }
+        }
+
+        var unscanned = targets
+            .Where(target => !claimableByProperty.ContainsKey((cluster, target.Listing!.AssetId, wallet)))
+            .ToList();
+
+        if (unscanned.Count == 0)
+        {
+            return;
+        }
+
+        var rpc = SolanaRpcModel.GetClient(cluster);
+        var fetchGate = new SemaphoreSlim(3, 3);
+
+        await Task.WhenAll(unscanned.Select(async target =>
+        {
+            await fetchGate.WaitAsync().ConfigureAwait(false);
+
+            try
+            {
+                var listing = target.Listing!;
+                var assetId = listing.AssetId;
+
+                var income = await XcavateMarketplaceIndexerModel.GetIncomeStateAsync(
+                        cluster, assetId, wallet, rpc, CancellationToken.None)
+                    .ConfigureAwait(false);
+
+                var governance = await XcavateMarketplaceIndexerModel.GetGovernanceStateAsync(
+                        cluster, listing.ListingId, assetId, wallet, CancellationToken.None)
+                    .ConfigureAwait(false);
+
+                var shares = governance.Holding?.Amount ?? 0u;
+
+                var claimables = new List<ClaimableMint>();
+
+                foreach (var stream in income.Streams)
+                {
+                    var claimable = income.GetClaimable(stream.Mint, shares);
+
+                    if (claimable.Sign <= 0)
+                    {
+                        continue;
+                    }
+
+                    var decimals = await ResolveIncomeMintDecimalsAsync(cluster, stream.Mint)
+                        .ConfigureAwait(false);
+
+                    claimables.Add(new ClaimableMint(stream.Mint, claimable, decimals, IncomeMintSymbol(cluster, stream.Mint)));
+                }
+
+                var entry = new ClaimableIncomeEntry(
+                    assetId,
+                    listing.XcavateMetadata?.PropertyName ?? $"property #{assetId}",
+                    claimables);
+
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    claimableByProperty[(cluster, assetId, wallet)] = entry;
+                    target.Wrapper.HasClaimableRent = claimables.Count > 0;
+                    UpdateRentCard();
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to scan claimable rent for asset {target.Listing!.AssetId}:");
+                Console.WriteLine(ex);
+            }
+            finally
+            {
+                fetchGate.Release();
+            }
+        })).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The mint's decimals for the claimable display: the whitelist entry when the app
+    /// knows the mint, else the mint account on chain - the same resolution
+    /// <see cref="XcavateMarketplaceCallsModel"/> applies to payment mints in the buy
+    /// flow.
+    /// </summary>
+    private async Task<int> ResolveIncomeMintDecimalsAsync(SolanaCluster cluster, string mint)
+    {
+        if (incomeMintDecimals.TryGetValue((cluster, mint), out var decimals))
+        {
+            return decimals;
+        }
+
+        var (_, resolved) = await XcavateMarketplaceCallsModel.ResolveMintAsync(
+            cluster, new Solnet.Wallet.PublicKey(mint), CancellationToken.None).ConfigureAwait(false);
+
+        incomeMintDecimals[(cluster, mint)] = resolved;
+
+        return resolved;
+    }
+
+    /// <summary>
+    /// The whitelist symbol the buy flow prints payment amounts with; an income mint the
+    /// app does not know displays as plain "tokens" rather than a base58 address.
+    /// </summary>
+    private static string IncomeMintSymbol(SolanaCluster cluster, string mint) =>
+        SolanaTokenWhitelist.ForCluster(cluster)
+            .FirstOrDefault(entry => entry.Mint == mint)?.Symbol ?? "tokens";
+
+    /// <summary>Rebuilds the card's totals from the cache and re-evaluates its state. Main thread only.</summary>
+    private void UpdateRentCard()
+    {
+        var cluster = SolanaNetworkModel.SelectedCluster;
+        var wallet = ownerAddress;
+
+        var totals = new Dictionary<string, ClaimableMint>();
+
+        foreach (var entry in claimableByProperty)
+        {
+            if (entry.Key.Cluster != cluster || entry.Key.Wallet != wallet)
+            {
+                continue;
+            }
+
+            foreach (var claimable in entry.Value.Claimables)
+            {
+                if (totals.TryGetValue(claimable.Mint, out var total))
+                {
+                    totals[claimable.Mint] = total with { Amount = total.Amount + claimable.Amount };
+                }
+                else
+                {
+                    totals[claimable.Mint] = claimable;
+                }
+            }
+        }
+
+        hasClaimableRentTotal = totals.Count > 0;
+
+        RentTotalText = totals.Count == 0
+            ? (RentLoadSettled ? "" : "Checking owned properties…")
+            : string.Join("\n", totals.Values.Select(total =>
+                $"{XcavateReserveBalanceModel.Format(XcavateMarketplaceIndexerModel.PropertyIncomeState.ToDisplayAmount(total.Amount, total.Decimals))} {total.Symbol}"));
+
+        OnPropertyChanged(nameof(RentCardIsVisible));
+        UpdateClaimAllButton();
+    }
+
+    private void UpdateClaimAllButton()
+    {
+        if (ClaimRentModel.ClaimInProgress)
+        {
+            ClaimAllButtonText = "Claiming…";
+            ClaimAllButtonState = PlutoFramework.Components.Buttons.ButtonStateEnum.Disabled;
+            return;
+        }
+
+        ClaimAllButtonText = "Claim all";
+        ClaimAllButtonState = RentLoadSettled && hasClaimableRentTotal
+            ? PlutoFramework.Components.Buttons.ButtonStateEnum.Enabled
+            : PlutoFramework.Components.Buttons.ButtonStateEnum.Disabled;
+    }
+
+    /// <summary>
+    /// Claims the wallet's rent on every owned property that shows a claimable balance,
+    /// strictly one property at a time (one status popup each, named for the property).
+    /// A property whose claim fails keeps its unclaimed balance on the card; the
+    /// pipeline's confirmation event re-scans and refreshes the totals.
+    /// </summary>
+    [RelayCommand]
+    private async Task ClaimAllRentAsync()
+    {
+        var cluster = SolanaNetworkModel.SelectedCluster;
+        var wallet = ownerAddress;
+
+        var targets = claimableByProperty
+            .Where(entry => entry.Key.Cluster == cluster && entry.Key.Wallet == wallet && entry.Value.Claimables.Count > 0)
+            .Select(entry => new ClaimRentModel.ClaimTarget(entry.Value.AssetId, entry.Value.PropertyName))
+            .ToList();
+
+        if (targets.Count == 0)
+        {
+            return;
+        }
+
+        await ClaimRentModel.ClaimAsync(targets).ConfigureAwait(false);
     }
 }
