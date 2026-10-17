@@ -225,9 +225,8 @@ namespace XcavateMobileApp
                 _ => new OnboardingShell(),
             });
 
-            // Lawyers land on their own main page. Fire-and-forget after the shell is set:
-            // the role check rides the indexer (with the persisted profile role as offline
-            // fallback) and never blocks the first frame.
+            // Apply the selected main-page role after the shell is set. Fire-and-forget:
+            // profile and fallback role checks never block the first frame.
             _ = RouteToRoleMainPageAsync();
 
             StartNotificationServices();
@@ -239,12 +238,11 @@ namespace XcavateMobileApp
         }
 
         /// <summary>
-        /// Sends lawyer wallets to <c>//LawyerAccount</c> instead of the investor
-        /// <c>//Account</c> the shell opens on. No-op while onboarding is still showing
-        /// (no XcavateAppShell yet) and tolerant of every failure - a failed check must
-        /// never take down startup.
+        /// Applies the selected main-page route when it differs from the investor route the
+        /// shell opens on. No-op while onboarding is still showing (no XcavateAppShell yet)
+        /// and tolerant of every failure - a failed check must never take down startup.
         /// </summary>
-        private static async Task RouteToRoleMainPageAsync()
+        internal static async Task RouteToRoleMainPageAsync()
         {
             try
             {
@@ -253,9 +251,11 @@ namespace XcavateMobileApp
                     return;
                 }
 
-                if (await LawyerRoleModel.IsLawyerAsync(SolanaNetworkModel.SelectedCluster, CancellationToken.None))
+                var route = await MainPageRoleModel.GetRouteAsync();
+
+                if (route != "//Account")
                 {
-                    await Shell.Current.GoToAsync("//LawyerAccount", animate: false);
+                    await Shell.Current.GoToAsync(route, animate: false);
                 }
             }
             catch (Exception ex)
