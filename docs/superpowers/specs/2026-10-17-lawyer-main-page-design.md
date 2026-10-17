@@ -3,6 +3,16 @@
 Date: 2026-10-17
 Status: approved for planning (auto-mode session; user directive "let's get working on the Lawyer Side")
 
+> **Revision 2026-10-18 (supersedes the IPFS parts below):** the terms document is stored in
+> the existing Hetzner S3 object storage via `IS3Service` — the same path as profile pictures —
+> not IPFS/Pinata. The `IIpfsService`/`PinataIpfsService` work was removed uncommitted.
+> Consequences: response JSON is `{ url, fileName, updatedAt }` (no `cid`); the entity column is
+> `Url`; object key is fixed per wallet (`terms-documents/{ss58address}.pdf`, re-upload
+> overwrites); `PINATA_JWT`/`IPFS_GATEWAY_URL` env vars no longer exist; the app's
+> `TermsDocumentInfo` record dropped `Cid`. App UI: the terms card uses the `card:Card`
+> component (`PlutoFramework.Components.Card`), and load/upload errors surface via
+> `MessagePopupView` popups — the inline card error state no longer exists.
+
 ## Intent
 
 Give lawyer users their own landing experience in the Xcavate mobile app, mirroring

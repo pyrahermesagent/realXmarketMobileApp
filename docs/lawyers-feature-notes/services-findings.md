@@ -65,10 +65,10 @@ The mobile app cannot sign with the rent collector key (it lives only in Profile
 **Update 2026-10-17 — lawyer main page shipped** (spec `docs/superpowers/specs/2026-10-17-lawyer-main-page-design.md`,
 plan `docs/superpowers/plans/2026-10-17-lawyer-main-page.md`):
 - ProfileApi terms-document upload exists: `TermsDocumentController` at
-  `api/profiles/{ss58address}/terms-document` (POST signed multipart PDF → Pinata IPFS, CID stored in
-  new `LawyerTermsDocuments` table; GET public). First real IPFS integration in the API
-  (`Services/Ipfs/`, env `PINATA_JWT` / `IPFS_GATEWAY_URL`, absent key → 503). Uncommitted in
-  `/home/rosta/XcavateProfileApi`.
+  `api/profiles/{ss58address}/terms-document` (POST signed multipart PDF → Hetzner S3 via the
+  existing `IS3Service`, same bucket as profile pictures, fixed key `terms-documents/{addr}.pdf`,
+  row in `LawyerTermsDocuments`; GET public, response `{url, fileName, updatedAt}`).
+  Revised 2026-10-18 from IPFS/Pinata to S3 — the IPFS service was removed uncommitted.
 - Indexer lawyer filters exist on the live Rust indexer: `listings(assignedLawyer:, assignableTo:)`
   (PR https://github.com/XcavateBlockchain/Indexer/pull/8, branch `agent/20261017-lawyer-listing-filters`,
   ADR-43). App-side `LawyerProperties` query + `GetLawyerAssignable/AssignedPropertiesAsync` added.
@@ -76,7 +76,7 @@ plan `docs/superpowers/plans/2026-10-17-lawyer-main-page.md`):
   `TermsDocumentPage` (WebView PDF), hand-rolled signed `TermsDocumentClient`. Uncommitted in app repo
   + `realXmarketPlutoFramework` submodule.
 - Deploy order note: indexer PR must merge/deploy before an app release ships the `LawyerProperties` query;
-  ProfileApi needs `PINATA_JWT` set before uploads work.
+  ProfileApi needs its existing S3 env vars (`S3_*`, already used for profile pictures) for uploads to work.
 
 1. ProfileApi `MarketplaceController.cs` lawyer-related endpoints (bucket endpoints?) — grep `lawyer`/`bucket` in `/home/rosta/XcavateProfileApi/src/XcavateProfileApi/Controllers/`.
 2. Bucket: `/home/rosta/XcavateProfileApi/tests/XcavateBuckets.Tests/MarketplaceEndpointTests.cs` + `MarketplaceHost.cs`; mobile design doc `docs/superpowers/specs/2026-07-25-bucket-pallet-graphql-api-design.md` (documents_hash source for confirm_documents).

@@ -1,5 +1,7 @@
 # Lawyer Main Page Implementation Plan
 
+> **Revised 2026-10-18:** terms storage is S3 (`IS3Service`, key `terms-documents/{ss58address}.pdf`), not IPFS/Pinata; response JSON is `{url, fileName, updatedAt}` (no `cid`); app terms card uses `card:Card` and errors go through `MessagePopupView`. Tasks 2/4/6 below describe the original IPFS design — see the spec's revision note for current truth.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Give lawyer users a dedicated main page in the Xcavate MAUI app — claimed-property count + balance cards, a terms-document PDF card (upload/view via IPFS through XcavateProfileApi), and a property list with "Newly listed" / "Under Instruction" filters backed by new Indexer query args.
