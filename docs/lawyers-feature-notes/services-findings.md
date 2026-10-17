@@ -62,6 +62,22 @@ The mobile app cannot sign with the rent collector key (it lives only in Profile
 
 ## 3. Still unverified (next steps)
 
+**Update 2026-10-17 — lawyer main page shipped** (spec `docs/superpowers/specs/2026-10-17-lawyer-main-page-design.md`,
+plan `docs/superpowers/plans/2026-10-17-lawyer-main-page.md`):
+- ProfileApi terms-document upload exists: `TermsDocumentController` at
+  `api/profiles/{ss58address}/terms-document` (POST signed multipart PDF → Pinata IPFS, CID stored in
+  new `LawyerTermsDocuments` table; GET public). First real IPFS integration in the API
+  (`Services/Ipfs/`, env `PINATA_JWT` / `IPFS_GATEWAY_URL`, absent key → 503). Uncommitted in
+  `/home/rosta/XcavateProfileApi`.
+- Indexer lawyer filters exist on the live Rust indexer: `listings(assignedLawyer:, assignableTo:)`
+  (PR https://github.com/XcavateBlockchain/Indexer/pull/8, branch `agent/20261017-lawyer-listing-filters`,
+  ADR-43). App-side `LawyerProperties` query + `GetLawyerAssignable/AssignedPropertiesAsync` added.
+- App: `LawyerMainPage` (+ role-based `//LawyerAccount` routing via `LawyerRoleModel`),
+  `TermsDocumentPage` (WebView PDF), hand-rolled signed `TermsDocumentClient`. Uncommitted in app repo
+  + `realXmarketPlutoFramework` submodule.
+- Deploy order note: indexer PR must merge/deploy before an app release ships the `LawyerProperties` query;
+  ProfileApi needs `PINATA_JWT` set before uploads work.
+
 1. ProfileApi `MarketplaceController.cs` lawyer-related endpoints (bucket endpoints?) — grep `lawyer`/`bucket` in `/home/rosta/XcavateProfileApi/src/XcavateProfileApi/Controllers/`.
 2. Bucket: `/home/rosta/XcavateProfileApi/tests/XcavateBuckets.Tests/MarketplaceEndpointTests.cs` + `MarketplaceHost.cs`; mobile design doc `docs/superpowers/specs/2026-07-25-bucket-pallet-graphql-api-design.md` (documents_hash source for confirm_documents).
 3. Indexer `/home/rosta/xcavate-indexer`: `schema.graphql` ~lines 140–280 (parent type of `ongoingLawyerVotings`/`propertyLawyers`/`userLawyerVotes`); `src/mappings/marketplace.ts` — grep `LawyerRegistered|SpvCaseClaimed|register_lawyer|claim_spv_case`.
@@ -77,4 +93,4 @@ The mobile app cannot sign with the rent collector key (it lives only in Profile
 - Doc upload is the missing mobile piece; IPFS acceptable.
 - Plan date 2026-10-14. Income UI out of scope. Expired-claim handling out of scope (boss's problem).
 - App already has: VoteOnSpvLawyer + FinalizeSpvElection encoders, `SpvElectionSection` + `TermsVotingSectionView.xaml` (investor side, ApproveSpvTerms → VoteOnSpvLawyer), PDAs `DeriveLawyer`/`DeriveLawyerCandidacy`/`DeriveLawyerVote` etc.
-- NO lawyer-side UI exists today in the app.
+- ~~NO lawyer-side UI exists today in the app.~~ Superseded 2026-10-17: `LawyerMainPage` + `TermsDocumentPage` + role routing shipped (see §3 update). Claim/resign/confirm-documents UI still does not exist.
