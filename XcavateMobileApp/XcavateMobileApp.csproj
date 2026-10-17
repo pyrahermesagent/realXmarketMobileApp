@@ -162,6 +162,12 @@
     <MauiXaml Update="Pages\InvestorMainPage.xaml">
       <Generator>MSBuild:Compile</Generator>
     </MauiXaml>
+    <MauiXaml Update="Pages\LawyerMainPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </MauiXaml>
+    <MauiXaml Update="Pages\TermsDocumentPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </MauiXaml>
     <MauiXaml Update="Pages\ModifyUserProfilePage.xaml">
       <Generator>MSBuild:Compile</Generator>
     </MauiXaml>

@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="XcavateMobileApp.Pages.LawyerMainPage"
+             xmlns:txanalyzer="clr-namespace:PlutoFramework.Components.TransactionAnalyzer;assembly=PlutoFramework"
+             xmlns:networkselect="clr-namespace:PlutoFramework.Components.NetworkSelect;assembly=PlutoFramework"
+             xmlns:transferview="clr-namespace:PlutoFramework.Components.TransferView;assembly=PlutoFramework"
+             xmlns:dappconnection="clr-namespace:PlutoFramework.Components.DAppConnection;assembly=PlutoFramework"
+             xmlns:messagepopup="clr-namespace:PlutoFramework.Components.MessagePopup;assembly=PlutoFramework"
+             xmlns:transactionrequest="clr-namespace:PlutoFramework.Components.TransactionRequest;assembly=PlutoFramework"
+             xmlns:addressview="clr-namespace:PlutoFramework.Components.AddressView;assembly=PlutoFramework"
+             xmlns:staking="clr-namespace:PlutoFramework.Components.Staking;assembly=PlutoFramework"
+             xmlns:vault="clr-namespace:PlutoFramework.Components.Vault;assembly=PlutoFramework"
+             xmlns:extrinsic="clr-namespace:PlutoFramework.Components.Extrinsic;assembly=PlutoFramework"
+             xmlns:xcavate="clr-namespace:PlutoFramework.Components.Xcavate;assembly=PlutoFramework"
+             xmlns:faucet="clr-namespace:PlutoFramework.Components.Faucet;assembly=PlutoFramework"
+             xmlns:xcavatecells="clr-namespace:PlutoFramework.Components.XcavateProperty.Cells;assembly=PlutoFramework"
+             xmlns:xcavateproperty="clr-namespace:PlutoFramework.Components.XcavateProperty;assembly=PlutoFramework"
+             xmlns:buttons="clr-namespace:PlutoFramework.Components.Buttons;assembly=PlutoFramework"
+             xmlns:components="clr-namespace:XcavateMobileApp.Components"
+             xmlns:account="clr-namespace:PlutoFramework.Components.Account;assembly=PlutoFramework"
+             xmlns:keys="clr-namespace:PlutoFramework.Components.Keys;assembly=PlutoFramework"
+             xmlns:password="clr-namespace:PlutoFramework.Components.Password;assembly=PlutoFramework"
+             xmlns:kilt="clr-namespace:PlutoFramework.Components.Kilt;assembly=PlutoFramework"
+             xmlns:sumsub="clr-namespace:PlutoFramework.Components.Sumsub;assembly=PlutoFramework"
+             xmlns:card="clr-namespace:PlutoFramework.Components.Card;assembly=PlutoFramework"
+             xmlns:loading="clr-namespace:PlutoFramework.Components.Loading;assembly=PlutoFramework"
+             xmlns:animations="clr-namespace:PlutoFramework.Components.Animations;assembly=PlutoFramework"
+             xmlns:solanacomponents="clr-namespace:PlutoFramework.Components.Solana;assembly=PlutoFramework"
+             xmlns:solanatransfer="clr-namespace:PlutoFramework.Components.Solana.Transfer;assembly=PlutoFramework"
+             BackgroundColor="{AppThemeBinding Light=White, Dark=#0a0a0a}"
+             Shell.PresentationMode="NotAnimated"
+             HideSoftInputOnTapped="True">
+
+    <AbsoluteLayout AbsoluteLayout.LayoutBounds="0.5, 0.5, 1, 1"
+                    AbsoluteLayout.LayoutFlags="All">
+        <Image AbsoluteLayout.LayoutBounds="0.5, 0.5, 1, 1"
+               AbsoluteLayout.LayoutFlags="All"
+               Source="{AppThemeBinding Light=whitebackground.png, Dark=darkbackground.png}"
+               Opacity="{AppThemeBinding Light=0.96}"
+               Aspect="AspectFill" />
+
+        <RefreshView x:Name="mainRefreshView"
+                     AbsoluteLayout.LayoutBounds="0.5, 0.5, 1, 1"
+                     AbsoluteLayout.LayoutFlags="All"
+                     Margin="0,65,0,65"
+                     Command="{Binding RefreshCommand}"
+                     RefreshColor="Transparent"
+                     IsRefreshing="{Binding IsRefreshing}">
+            <RefreshView.Behaviors>
+                <animations:PullProgressBehavior x:Name="mainPullProgress" />
+            </RefreshView.Behaviors>
+            <ScrollView x:Name="mainScrollView"
+                        AbsoluteLayout.LayoutBounds="0.5, 0.5, 1, 1"
+                        AbsoluteLayout.LayoutFlags="All"
+                        Scrolled="OnMainScrollViewScrolled">
+                <VerticalStackLayout x:Name="stackLayout"
+                                     Spacing="15"
+                                     Padding="20, 15, 20, 100">
+                    <xcavate:RiskWarningView HeightRequest="90" />
+
+                    <dappconnection:DAppConnectionView />
+
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                        <!-- Tapping the count jumps to the "Under Instruction" filter. -->
+                        <xcavate:XcavateCell Title="Manage properties"
+                                             Value="{Binding AssignedCountText}"
+                                             Command="{Binding ShowUnderInstructionCommand}"
+                                             Grid.Column="0" />
+
+                        <solanacomponents:SolanaBalanceCellView Grid.Column="1"
+                                                                x:Name="balanceCellView"/>
+                    </Grid>
+
+                    <!-- The lawyer's terms PDF: one document per wallet, pinned to IPFS by
+                         the profile API. The card swaps between its four states - upload
+                         offer, uploaded document, busy, error - on the view model's flags. -->
+                    <Border Padding="15"
+                            BackgroundColor="{AppThemeBinding Light={StaticResource CardBackgroundColorLight}, Dark={StaticResource CardBackgroundColorDark}}"
+                            Stroke="{StaticResource CardBorderColor}"
+                            StrokeThickness="{StaticResource CardBorderThickness}">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="{StaticResource CardCornerRadius}" />
+                        </Border.StrokeShape>
+
+                        <VerticalStackLayout Spacing="8">
+                            <Label Text="Terms document"
+                                   FontAttributes="Bold"
+                                   FontSize="16"
+                                   TextColor="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}" />
+
+                            <!-- No document on record. -->
+                            <VerticalStackLayout Spacing="8"
+                                                 IsVisible="{Binding ShowTermsUpload}">
+                                <Label Text="Upload the terms you work under. Counterparties can read them from your wallet address."
+                                       TextColor="#A6A6A6" />
+                                <buttons:ElevatedButton Text="Upload PDF"
+                                                        ButtonState="Enabled"
+                                                        Command="{Binding UploadTermsCommand}" />
+                            </VerticalStackLayout>
+
+                            <!-- A document is on record. -->
+                            <VerticalStackLayout Spacing="8"
+                                                 IsVisible="{Binding ShowTermsUploaded}">
+                                <Label Text="{Binding TermsFileNameText}"
+                                       FontAttributes="Bold"
+                                       LineBreakMode="TailTruncation"
+                                       TextColor="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}" />
+                                <Label Text="{Binding TermsUpdatedAtText}"
+                                       FontSize="12"
+                                       TextColor="#A6A6A6" />
+                                <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="10">
+                                    <buttons:ElevatedButton Grid.Column="0"
+                                                            Text="View"
+                                                            HeightRequest="36"
+                                                            CornerRadius="18"
+                                                            ButtonState="Enabled"
+                                                            Command="{Binding ViewTermsCommand}" />
+                                    <buttons:ElevatedButton Grid.Column="1"
+                                                            Text="Change"
+                                                            HeightRequest="36"
+                                                            CornerRadius="18"
+                                                            ButtonState="GrayEnabled"
+                                                            Command="{Binding UploadTermsCommand}" />
+                                </Grid>
+                            </VerticalStackLayout>
+
+                            <!-- Upload or reload in flight. -->
+                            <ActivityIndicator IsVisible="{Binding ShowTermsBusy}"
+                                               IsRunning="{Binding ShowTermsBusy}"
+                                               HeightRequest="30"
+                                               Color="{StaticResource Primary}" />
+
+                            <!-- The last load failed; the previous document (if any) stays
+                                 on the card underneath, this state replaces it until a
+                                 retry succeeds. -->
+                            <VerticalStackLayout Spacing="8"
+                                                 IsVisible="{Binding ShowTermsError}">
+                                <Label Text="{Binding TermsError}"
+                                       TextColor="{StaticResource DangerousRed}"
+                                       HorizontalTextAlignment="Center" />
+                                <buttons:ElevatedButton Text="Try again"
+                                                        ButtonState="Enabled"
+                                                        Command="{Binding RetryTermsLoadCommand}" />
+                            </VerticalStackLayout>
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!--
+                        Headless on purpose. The Solana cell above replaced this one visually, but
+                        this is still the only view that populates AssetsModel.AssetsDict for
+                        existing Substrate users - the Substrate BalancePage, BuyPropertyTokensViewModel
+                        and AssetSelectButtonViewModel all read that dictionary. IsVisible="False"
+                        makes it Visibility.Collapsed, so VerticalStackLayout skips it for both
+                        measure and spacing: it loads, it does not lay out.
+                    -->
+                    <xcavatecells:BalanceCellView x:Name="substrateBalanceCellView"
+                                                  IsVisible="False" />
+
+                    <VerticalStackLayout Spacing="5">
+                        <Grid Margin="0,0,0,5" ColumnDefinitions="Auto,Auto,*" ColumnSpacing="10">
+                            <buttons:ElevatedButton Grid.Column="0"
+                                                     Text="Newly listed"
+                                                     HorizontalOptions="Start"
+                                                     Command="{Binding ToggleNewlyListedCommand}"
+                                                     ButtonState="{Binding NewlyListedButtonState}"
+                                                    HeightRequest="36"
+                                                    CornerRadius="18"/>
+                            <buttons:ElevatedButton Grid.Column="1"
+                                                     Text="Under Instruction"
+                                                     HorizontalOptions="Start"
+                                                     Command="{Binding ToggleUnderInstructionCommand}"
+                                                     ButtonState="{Binding UnderInstructionButtonState}"
+                                                     HeightRequest="36"
+                                                     CornerRadius="18"/>
+                        </Grid>
+
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding LawyerProperties}"
+                                             Spacing="15">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate>
+                                    <xcavateproperty:PropertyThumbnailView XcavateNftWrapper="{Binding .}" />
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+
+                        <loading:SkeletonCardView ItemMargin="0,0,0,10"
+                                                  IsVisible="{Binding ShowSkeleton}" />
+                        <Label Text="{Binding EmptyListMessage}"
+                               TextColor="#A6A6A6"
+                               HorizontalOptions="Center"
+                               Margin="20, 40, 20, 40"
+                               IsVisible="{Binding NoProperties}"
+                               HorizontalTextAlignment="Center"/>
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </ScrollView>
+        </RefreshView>
+
+        <animations:ParticleStreamView x:Name="particleStreamView"
+                                       AbsoluteLayout.LayoutBounds="0, 65, 1, 100"
+                                       AbsoluteLayout.LayoutFlags="XProportional,WidthProportional"
+                                       ParticleColor="{StaticResource Primary}"
+                                       Playing="{Binding IsRefreshing}"
+                                       PullProgress="{Binding Source={x:Reference mainPullProgress}, Path=Progress}" />
+
+        <components:XcavateMainPageTopNavigationBarView />
+
+        <card:BottomPillBackgroundView />
+
+        <card:TopPillBackgroundView />
+
+        <extrinsic:ExtrinsicStatusStackLayout />
+
+        <vault:VaultSignView />
+
+        <staking:StakingRegistrationRequestView />
+
+        <messagepopup:MessagePopupView />
+
+        <xcavate:XcavateNavigationBarView />
+
+        <xcavateproperty:PropertyMarketplaceFilterPopupView />
+
+        <xcavateproperty:PropertyMarketplaceSelectionPopupView />
+
+        <xcavateproperty:SendSharesPopupView />
+
+        <networkselect:MultiNetworkSelectView x:Name="networksView"  IsVisible="False" />
+
+        <account:NoAccountPopup ZIndex="10" />
+
+        <!-- Raised by the messenger gate (MessengerAccessModel) from the top navigation
+             bar; hosted here because this page is not a PageTemplate. -->
+        <keys:X25519KeyRequiredPopupView ZIndex="10" />
+
+        <solanacomponents:ConnectMwaPopupView ZIndex="10" />
+
+        <kilt:NoDidPopupView ZIndex="10" />
+
+        <xcavate:UserProfileNotCreatedPopupView ZIndex="10" />
+
+        <xcavate:NotWhitelistedPopupView ZIndex="10" />
+
+        <!-- Above the full-screen loading overlay (ZIndex=20): the user must always be
+             able to enter a password, even while something is loading. -->
+        <password:EnterPasswordPopupView ZIndex="1000"/>
+
+        <loading:FullPageLoadingView ZIndex="20" />
+
+        <addressview:AddressQrCodeView />
+
+        <transferview:TransferView />
+
+        <solanatransfer:SolanaTransferView />
+
+        <solanatransfer:SolanaTokenSelectView />
+
+        <dappconnection:DAppConnectionRequestView />
+
+        <transactionrequest:MessageSignRequestView />
+
+        <txanalyzer:TransactionAnalyzerConfirmationView />
+
+        <networkselect:NetworkSelectPopup />
+    </AbsoluteLayout>
+</ContentPage>
