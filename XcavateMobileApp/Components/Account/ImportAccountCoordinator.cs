@@ -81,10 +81,10 @@ public class ImportAccountCoordinator : IImportAccountCoordinator
         await Shell.Current.Navigation.PushAsync(new ModifyUserProfilePage(viewModel));
     }
 
-    private static Task NavigateToAppShellAsync()
+    private static async Task NavigateToAppShellAsync()
     {
         App.SetRootPage(new XcavateAppShell());
-        return Task.CompletedTask;
+        await App.RouteToRoleMainPageAsync();
     }
 
     /// <summary>

@@ -10,6 +10,9 @@
     <ShellContent ContentTemplate="{DataTemplate pages:InvestorMainPage}"
                   Route="Account" >
     </ShellContent>
+    <ShellContent ContentTemplate="{DataTemplate pages:LawyerMainPage}"
+                  Route="LawyerAccount" >
+    </ShellContent>
     <ShellContent ContentTemplate="{DataTemplate pages:NoAccountMainPage}"
                   Route="NoAccount" >
     </ShellContent>

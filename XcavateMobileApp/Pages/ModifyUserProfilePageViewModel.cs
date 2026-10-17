@@ -451,6 +451,7 @@ namespace XcavateMobileApp.Pages
         {
             OnboardingModel.SetOnboardingStage(OnboardingStage.Finished);
             App.SetRootPage(new XcavateAppShell());
+            _ = App.RouteToRoleMainPageAsync();
         }
 
         private void MoveImages()

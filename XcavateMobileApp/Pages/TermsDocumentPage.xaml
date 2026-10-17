@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="XcavateMobileApp.Pages.TermsDocumentPage"
+             BackgroundColor="{AppThemeBinding Light=White, Dark=#0a0a0a}"
+             Shell.PresentationMode="NotAnimated"
+             HideSoftInputOnTapped="True">
+
+    <Grid RowDefinitions="Auto,*">
+        <!-- Top bar in the XcavateTopNavigationBarView look: rounded back button + title. -->
+        <Grid Grid.Row="0"
+              Padding="10"
+              ColumnSpacing="10"
+              ColumnDefinitions="35,*">
+            <Border Grid.Column="0"
+                    HeightRequest="35"
+                    WidthRequest="35"
+                    BackgroundColor="#1A4E4E4E"
+                    StrokeThickness="0"
+                    Padding="5">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="17.5" />
+                </Border.StrokeShape>
+                <Image HeightRequest="25"
+                       WidthRequest="25"
+                       Source="xcavatebackarrow.png" />
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnBackClicked" />
+                </Border.GestureRecognizers>
+            </Border>
+
+            <Label x:Name="titleLabel"
+                   Grid.Column="1"
+                   FontSize="14"
+                   HorizontalTextAlignment="Start"
+                   VerticalTextAlignment="Center"
+                   LineBreakMode="TailTruncation"
+                   TextColor="{AppThemeBinding Light=#4E4E4E, Dark=#E8E9ED}">
+                <Label.FormattedText>
+                    <FormattedString>
+                        <Span FontAttributes="Bold"
+                              x:Name="titleSpan" />
+                    </FormattedString>
+                </Label.FormattedText>
+            </Label>
+        </Grid>
+
+        <Grid Grid.Row="1">
+            <WebView x:Name="webView"
+                     Navigating="OnNavigating"
+                     Navigated="OnNavigated" />
+
+            <ActivityIndicator x:Name="loadingIndicator"
+                               IsVisible="False"
+                               IsRunning="False"
+                               HeightRequest="40"
+                               WidthRequest="40"
+                               Color="{StaticResource Primary}" />
+
+            <!-- The WebView's failure leaves a blank page; offer a readable error and a
+                 retry instead. -->
+            <VerticalStackLayout x:Name="errorView"
+                                 IsVisible="False"
+                                 Spacing="10"
+                                 Padding="20"
+                                 VerticalOptions="Center">
+                <Label Text="The document could not be loaded."
+                       FontAttributes="Bold"
+                       FontSize="16"
+                       HorizontalOptions="Center"
+                       TextColor="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}" />
+                <Label Text="Check your connection and try again."
+                       HorizontalOptions="Center"
+                       HorizontalTextAlignment="Center"
+                       TextColor="#A6A6A6" />
+                <Button Text="Try again"
+                        Clicked="OnRetryClicked"
+                        HorizontalOptions="Center" />
+            </VerticalStackLayout>
+        </Grid>
+    </Grid>
+</ContentPage>

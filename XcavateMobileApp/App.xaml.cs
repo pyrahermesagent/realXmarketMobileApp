@@ -212,6 +212,7 @@ namespace XcavateMobileApp
             PopupManager.TrackPopup(DependencyService.Get<ModifyUserProfilePopupViewModel>());
 
             DependencyService.Register<InvestorMainPageViewModel>();
+            DependencyService.Register<LawyerMainPageViewModel>();
 
             var onboardingPopupViewModel = DependencyService.Get<OnboardingInProgressPopupViewModel>();
             onboardingPopupViewModel.ContinueRequested = ContinueOnboardingAsync;
@@ -224,12 +225,44 @@ namespace XcavateMobileApp
                 _ => new OnboardingShell(),
             });
 
+            // Apply the selected main-page role after the shell is set. Fire-and-forget:
+            // profile and fallback role checks never block the first frame.
+            _ = RouteToRoleMainPageAsync();
+
             StartNotificationServices();
 
             // A cold-start notification tap stashed its deep link in MainActivity
             // before any shell existed. Deferred one dispatcher loop so the fresh
             // shell's handlers are attached before a page is pushed onto it.
             Dispatcher.Dispatch(() => _ = NotificationDeepLinkModel.TryOpenPendingAsync());
+        }
+
+        /// <summary>
+        /// Applies the selected main-page route when it differs from the investor route the
+        /// shell opens on. No-op while onboarding is still showing (no XcavateAppShell yet)
+        /// and tolerant of every failure - a failed check must never take down startup.
+        /// </summary>
+        internal static async Task RouteToRoleMainPageAsync()
+        {
+            try
+            {
+                if (Shell.Current is not XcavateAppShell)
+                {
+                    return;
+                }
+
+                var route = await MainPageRoleModel.GetRouteAsync();
+
+                if (route != "//Account")
+                {
+                    await Shell.Current.GoToAsync(route, animate: false);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Role-based routing failed:");
+                Console.WriteLine(ex);
+            }
         }
 
         /// <summary>
