@@ -2,84 +2,17 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="XcavateMobileApp.Pages.TermsDocumentPage"
+             xmlns:templates="clr-namespace:PlutoFramework.Templates.TopNavigationBarTemplate;assembly=PlutoFramework"
              BackgroundColor="{AppThemeBinding Light=White, Dark=#0a0a0a}"
              Shell.PresentationMode="NotAnimated"
              HideSoftInputOnTapped="True">
 
-    <Grid RowDefinitions="Auto,*">
-        <!-- Top bar in the XcavateTopNavigationBarView look: rounded back button + title. -->
-        <Grid Grid.Row="0"
-              Padding="10"
-              ColumnSpacing="10"
-              ColumnDefinitions="35,*,35,35">
-            <Border Grid.Column="0"
-                    HeightRequest="35"
-                    WidthRequest="35"
-                    BackgroundColor="#1A4E4E4E"
-                    StrokeThickness="0"
-                    Padding="5">
-                <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="17.5" />
-                </Border.StrokeShape>
-                <Image HeightRequest="25"
-                       WidthRequest="25"
-                       Source="xcavatebackarrow.png" />
-                <Border.GestureRecognizers>
-                    <TapGestureRecognizer Tapped="OnBackClicked" />
-                </Border.GestureRecognizers>
-            </Border>
+    <AbsoluteLayout AbsoluteLayout.LayoutBounds="0.5, 0.5, 1, 1"
+                    AbsoluteLayout.LayoutFlags="All">
 
-            <Label x:Name="titleLabel"
-                   Grid.Column="1"
-                   FontSize="14"
-                   HorizontalTextAlignment="Start"
-                   VerticalTextAlignment="Center"
-                   LineBreakMode="TailTruncation"
-                   TextColor="{AppThemeBinding Light=#4E4E4E, Dark=#E8E9ED}">
-                <Label.FormattedText>
-                    <FormattedString>
-                        <Span FontAttributes="Bold"
-                              x:Name="titleSpan" />
-                    </FormattedString>
-                </Label.FormattedText>
-            </Label>
-
-            <Border Grid.Column="2"
-                    HeightRequest="35"
-                    WidthRequest="35"
-                    BackgroundColor="#1A4E4E4E"
-                    StrokeThickness="0"
-                    Padding="5">
-                <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="17.5" />
-                </Border.StrokeShape>
-                <Image HeightRequest="25"
-                       WidthRequest="25"
-                       Source="xcavatedownload.png" />
-                <Border.GestureRecognizers>
-                    <TapGestureRecognizer Tapped="OnDownloadClicked" />
-                </Border.GestureRecognizers>
-            </Border>
-
-            <Border Grid.Column="3"
-                    HeightRequest="35"
-                    WidthRequest="35"
-                    BackgroundColor="#1A4E4E4E"
-                    StrokeThickness="0"
-                    Padding="5">
-                <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="17.5" />
-                </Border.StrokeShape>
-                <Image HeightRequest="25"
-                       WidthRequest="25"
-                       Source="xcavatetrash.png" />
-                <Border.GestureRecognizers>
-                    <TapGestureRecognizer Tapped="OnDeleteClicked" />
-                </Border.GestureRecognizers>
-            </Border>
-        </Grid>
-
-        <Grid Grid.Row="1">
+        <Grid AbsoluteLayout.LayoutBounds="0.5, 0.5, 1, 1"
+              AbsoluteLayout.LayoutFlags="All"
+              Margin="0,65,0,0">
             <WebView x:Name="webView"
                      Navigating="OnNavigating"
                      Navigated="OnNavigated" />
@@ -112,5 +45,7 @@
                         HorizontalOptions="Center" />
             </VerticalStackLayout>
         </Grid>
-    </Grid>
+
+        <templates:TopNavigationBarTemplate x:Name="topBar" />
+    </AbsoluteLayout>
 </ContentPage>

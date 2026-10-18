@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Terms document</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: #525659;
+        }
+
+        #document {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        canvas {
+            display: block;
+            margin: 8px 0;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, .4);
+        }
+    </style>
+</head>
+<body>
+    <div id="document"></div>
+
+    <!-- The worker script is loaded as a plain script so pdf.js picks it up through
+         globalThis.pdfjsWorker and renders in-process: Web Workers cannot start from a
+         file:// page, which is where the app assets viewer is served from. -->
+    <script src="pdf.min.js"></script>
+    <script src="pdf.worker.min.js"></script>
+    <script>
+        // Called from TermsDocumentPage with the Base64 of the downloaded PDF. Resolves to
+        // the string "ok" or to "error: <message>" so the page can show its retry view.
+        async function loadPdf(base64) {
+            try {
+                var binary = atob(base64);
+                var data = new Uint8Array(binary.length);
+                for (var i = 0; i < binary.length; i++) {
+                    data[i] = binary.charCodeAt(i);
+                }
+
+                var pdf = await pdfjsLib.getDocument({ data: data }).promise;
+                var container = document.getElementById('document');
+                var cssWidth = document.documentElement.clientWidth;
+                var pixelRatio = window.devicePixelRatio || 1;
+
+                for (var pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+                    var page = await pdf.getPage(pageNumber);
+                    var pageSize = page.getViewport({ scale: 1 });
+                    var viewport = page.getViewport({ scale: (cssWidth / pageSize.width) * pixelRatio });
+
+                    var canvas = document.createElement('canvas');
+                    canvas.width = Math.floor(viewport.width);
+                    canvas.height = Math.floor(viewport.height);
+                    canvas.style.width = cssWidth + 'px';
+                    canvas.style.height = Math.floor(cssWidth * pageSize.height / pageSize.width) + 'px';
+                    container.appendChild(canvas);
+
+                    await page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise;
+                }
+
+                return 'ok';
+            } catch (error) {
+                return 'error: ' + (error && error.message ? error.message : String(error));
+            }
+        }
+    </script>
+</body>
+</html>
