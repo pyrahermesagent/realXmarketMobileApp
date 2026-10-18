@@ -198,11 +198,9 @@
 
         <staking:StakingRegistrationRequestView />
 
-        <messagepopup:MessagePopupView />
-
-        <components:TermsUploadFailedPopupView />
-
         <xcavate:XcavateNavigationBarView />
+
+        <messagepopup:MessagePopupView />
 
         <xcavateproperty:PropertyMarketplaceFilterPopupView />
 
@@ -212,6 +210,8 @@
 
         <networkselect:MultiNetworkSelectView x:Name="networksView"  IsVisible="False" />
 
+        <components:TermsUploadFailedPopupView ZIndex="10" />
+        
         <account:NoAccountPopup ZIndex="10" />
 
         <!-- Raised by the messenger gate (MessengerAccessModel) from the top navigation
