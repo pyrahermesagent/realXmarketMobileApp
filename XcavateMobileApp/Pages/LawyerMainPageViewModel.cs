@@ -1,7 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PlutoFramework;
-using PlutoFramework.Components.XcavateProperty;
 using PlutoFramework.Model;
 using PlutoFramework.Model.Xcavate;
 using PlutoFramework.Model.Xcavate.Profile;
@@ -648,8 +647,27 @@ public partial class LawyerMainPageViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private Task TermsActionAsync()
+    {
+        if (ShowTermsUploaded)
+        {
+            return ViewTermsAsync();
+        }
+        else if (ShowTermsUpload)
+        {
+            return UploadTermsAsync();
+        }
+
+        return Task.CompletedTask;
+    }
+
     private async Task ViewTermsAsync()
     {
+        if (!ShowTermsUploaded)
+        {
+            return;
+        }
+
         if (TermsDocument is null)
         {
             return;
