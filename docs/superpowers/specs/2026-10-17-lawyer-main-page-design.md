@@ -10,8 +10,9 @@ Status: approved for planning (auto-mode session; user directive "let's get work
 > `Url`; object key is fixed per wallet (`terms-documents/{ss58address}.pdf`, re-upload
 > overwrites); `PINATA_JWT`/`IPFS_GATEWAY_URL` env vars no longer exist; the app's
 > `TermsDocumentInfo` record dropped `Cid`. App UI: the terms card uses the `card:Card`
-> component (`PlutoFramework.Components.Card`), and load/upload errors surface via
-> `MessagePopupView` popups — the inline card error state no longer exists.
+> component (`PlutoFramework.Components.Card`), and the inline card error state no longer
+> exists — terms-load failures are silent (logged; pull-to-refresh retries), upload failures
+> surface via `TermsUploadFailedPopupView`, a `BottomPopupCard` popup on the lawyer page.
 
 ## Intent
 
