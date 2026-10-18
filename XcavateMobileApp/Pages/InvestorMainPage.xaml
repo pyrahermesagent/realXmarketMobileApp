@@ -199,9 +199,9 @@
 
         <staking:StakingRegistrationRequestView />
 
-        <messagepopup:MessagePopupView />
-
         <xcavate:XcavateNavigationBarView />
+
+        <messagepopup:MessagePopupView />
 
         <xcavateproperty:PropertyMarketplaceFilterPopupView />
 
