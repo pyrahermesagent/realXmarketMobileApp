@@ -90,7 +90,7 @@
                          chips on the thumbnails below. Hidden until the wallet owns
                          something, and again once the scan settles with nothing claimable. -->
                     <Border Padding="15"
-                            IsVisible="{Binding RentCardIsVisible}"
+                            IsVisible="False"
                             BackgroundColor="{AppThemeBinding Light={StaticResource CardBackgroundColorLight}, Dark={StaticResource CardBackgroundColorDark}}"
                             Stroke="{StaticResource CardBorderColor}"
                             StrokeThickness="{StaticResource CardBorderThickness}">
