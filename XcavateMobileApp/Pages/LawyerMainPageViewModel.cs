@@ -1,7 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PlutoFramework;
-using PlutoFramework.Components.MessagePopup;
 using PlutoFramework.Components.XcavateProperty;
 using PlutoFramework.Model;
 using PlutoFramework.Model.Xcavate;
@@ -10,6 +9,7 @@ using PlutoFrameworkCore.Solana;
 using PlutoFrameworkCore.Xcavate;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using XcavateMobileApp.Components;
 using NftKey = (UniqueryPlus.NftTypeEnum, System.Numerics.BigInteger, System.Numerics.BigInteger);
 using XcavatePropertyModel = PlutoFramework.Components.XcavateProperty.XcavatePropertyModel;
 
@@ -512,8 +512,8 @@ public partial class LawyerMainPageViewModel : ObservableObject
 
     /// <summary>
     /// The card's refresh: GET the wallet's terms document. 404 (none yet) is the normal
-    /// empty state; any other failure surfaces through the message popup and leaves the
-    /// previous document (if any) on the card.
+    /// empty state; any other failure is logged and leaves the previous document (if any)
+    /// on the card - a pull-to-refresh is the retry.
     /// </summary>
     private async Task LoadTermsDocumentAsync(CancellationToken token)
     {
@@ -545,16 +545,13 @@ public partial class LawyerMainPageViewModel : ObservableObject
         {
             Console.WriteLine("Terms document load error:");
             Console.WriteLine(ex);
-
-            MainThread.BeginInvokeOnMainThread(() =>
-                ShowPopup("Could not load terms", "The terms document could not be loaded. Pull down to try again."));
         }
     }
 
     /// <summary>
     /// Picks a PDF (25 MB cap), uploads it signed, and swaps the card to the uploaded
     /// state. Every failure restores the previous card state and explains itself through
-    /// the message popup - a rejected signing prompt included.
+    /// the terms-upload-failed bottom popup - a rejected signing prompt included.
     /// </summary>
     [RelayCommand]
     private async Task UploadTermsAsync()
@@ -585,7 +582,7 @@ public partial class LawyerMainPageViewModel : ObservableObject
         {
             Console.WriteLine("Terms PDF pick error:");
             Console.WriteLine(ex);
-            ShowPopup("Upload failed", "The file could not be opened. Try again.");
+            ShowUploadError("The file could not be opened. Try again.");
             return;
         }
 
@@ -596,7 +593,7 @@ public partial class LawyerMainPageViewModel : ObservableObject
 
         if (!string.Equals(Path.GetExtension(picked.FileName), ".pdf", StringComparison.OrdinalIgnoreCase))
         {
-            ShowPopup("Upload failed", "Only PDF files can be uploaded.");
+            ShowUploadError("Only PDF files can be uploaded.");
             return;
         }
 
@@ -609,14 +606,14 @@ public partial class LawyerMainPageViewModel : ObservableObject
         }
         catch (InvalidDataException)
         {
-            ShowPopup("Upload failed", "The PDF is too large - the limit is 25 MB.");
+            ShowUploadError("The PDF is too large - the limit is 25 MB.");
             return;
         }
         catch (Exception ex)
         {
             Console.WriteLine("Terms PDF read error:");
             Console.WriteLine(ex);
-            ShowPopup("Upload failed", "The file could not be read. Try again.");
+            ShowUploadError("The file could not be read. Try again.");
             return;
         }
 
@@ -642,7 +639,7 @@ public partial class LawyerMainPageViewModel : ObservableObject
             // TermsDocument was never cleared, so the card falls back to the previous
             // document (or the upload offer) on its own once the busy flag drops.
             MainThread.BeginInvokeOnMainThread(() =>
-                ShowPopup("Upload failed", ex.Message));
+                ShowUploadError(ex.Message));
         }
         finally
         {
@@ -692,12 +689,11 @@ public partial class LawyerMainPageViewModel : ObservableObject
         }
     }
 
-    private static void ShowPopup(string title, string text)
+    private static void ShowUploadError(string text)
     {
-        var messagePopup = DependencyService.Get<MessagePopupViewModel>();
+        var popup = DependencyService.Get<TermsUploadFailedPopupViewModel>();
 
-        messagePopup.Title = title;
-        messagePopup.Text = text;
-        messagePopup.IsVisible = true;
+        popup.Message = text;
+        popup.IsVisible = true;
     }
 }

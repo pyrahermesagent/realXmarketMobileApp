@@ -200,6 +200,8 @@
 
         <messagepopup:MessagePopupView />
 
+        <components:TermsUploadFailedPopupView />
+
         <xcavate:XcavateNavigationBarView />
 
         <xcavateproperty:PropertyMarketplaceFilterPopupView />

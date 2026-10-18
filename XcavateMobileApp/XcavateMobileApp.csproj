@@ -153,6 +153,9 @@
     <MauiXaml Update="Components\XcavateMainPageTopNavigationBarView.xaml">
       <Generator>MSBuild:Compile</Generator>
     </MauiXaml>
+    <MauiXaml Update="Components\TermsUploadFailedPopupView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </MauiXaml>
     <MauiXaml Update="NoAccountShell.xaml">
       <Generator>MSBuild:Compile</Generator>
     </MauiXaml>

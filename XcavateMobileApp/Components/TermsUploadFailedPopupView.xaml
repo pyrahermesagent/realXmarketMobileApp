@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="XcavateMobileApp.Components.TermsUploadFailedPopupView"
+             xmlns:card="clr-namespace:PlutoFramework.Components.Card;assembly=PlutoFramework"
+             xmlns:buttons="clr-namespace:PlutoFramework.Components.Buttons;assembly=PlutoFramework"
+             IsVisible="{Binding IsVisible}"
+             AbsoluteLayout.LayoutBounds="0.5, 0.5, 1, 1"
+             AbsoluteLayout.LayoutFlags="All">
+
+    <card:BottomPopupCard Title="Upload failed"
+                          IsShown="{Binding IsVisible}">
+        <card:BottomPopupCard.View>
+            <AbsoluteLayout>
+                <ScrollView AbsoluteLayout.LayoutBounds="0, 0, 1, 1"
+                            AbsoluteLayout.LayoutFlags="SizeProportional"
+                            Margin="0, 0, 0, 90">
+                    <VerticalStackLayout Spacing="10"
+                                         Padding="20, 10">
+                        <Label Text="{Binding Message}"
+                               HorizontalTextAlignment="Center"
+                               TextColor="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}" />
+                    </VerticalStackLayout>
+                </ScrollView>
+
+                <AbsoluteLayout AbsoluteLayout.LayoutBounds="0.5, 1, 1, 80"
+                                AbsoluteLayout.LayoutFlags="PositionProportional, WidthProportional">
+                    <Grid AbsoluteLayout.LayoutBounds="0.5, 0.5, 1, 50"
+                          AbsoluteLayout.LayoutFlags="PositionProportional, WidthProportional"
+                          Margin="10, 0, 10, 10">
+                        <buttons:ElevatedButton Text="OK"
+                                                ButtonState="Enabled"
+                                                Command="{Binding OkCommand}" />
+                    </Grid>
+                </AbsoluteLayout>
+            </AbsoluteLayout>
+        </card:BottomPopupCard.View>
+    </card:BottomPopupCard>
+</ContentView>

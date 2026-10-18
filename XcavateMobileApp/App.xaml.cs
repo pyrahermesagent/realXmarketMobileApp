@@ -10,6 +10,7 @@ using PlutoFramework.Model.Xcavate;
 using PlutoFramework.Model.Xcavate.Profile;
 using PlutoFrameworkCore;
 using PlutoFrameworkCore.Solana;
+using XcavateMobileApp.Components;
 using XcavateMobileApp.Components.Account;
 using XcavateMobileApp.Components.Sumsub;
 using XcavateMobileApp.Pages;
@@ -213,6 +214,9 @@ namespace XcavateMobileApp
 
             DependencyService.Register<InvestorMainPageViewModel>();
             DependencyService.Register<LawyerMainPageViewModel>();
+
+            DependencyService.Register<TermsUploadFailedPopupViewModel>();
+            PopupManager.TrackPopup(DependencyService.Get<TermsUploadFailedPopupViewModel>());
 
             var onboardingPopupViewModel = DependencyService.Get<OnboardingInProgressPopupViewModel>();
             onboardingPopupViewModel.ContinueRequested = ContinueOnboardingAsync;
