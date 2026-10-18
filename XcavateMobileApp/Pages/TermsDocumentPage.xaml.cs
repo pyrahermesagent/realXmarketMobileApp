@@ -1,4 +1,5 @@
 using CommunityToolkit.Maui.Alerts;
+using CommunityToolkit.Mvvm.Input;
 using PlutoFramework.Model;
 using PlutoFramework.Model.Xcavate.Profile;
 using System.Linq;
@@ -16,19 +17,21 @@ using Foundation;
 namespace XcavateMobileApp.Pages;
 
 /// <summary>
-/// Reads the lawyer's terms PDF in-app. The document lives on a public IPFS gateway;
-/// Android's WebView cannot render PDFs inline, so there the page goes through the
-/// Google Docs embedded viewer (which needs the gateway URL to be publicly reachable),
-/// while WKWebView on iOS/MacCatalyst renders the PDF directly.
+/// Reads the lawyer's terms PDF in-app. Android's WebView cannot render PDFs inline, so the
+/// page loads a bundled pdf.js viewer from the app assets and hands it the downloaded PDF
+/// bytes; WKWebView on iOS/MacCatalyst renders the PDF document directly.
 /// </summary>
 public partial class TermsDocumentPage : ContentPage
 {
-    private readonly string sourceUrl;
-    private readonly string gatewayUrl;
+#if ANDROID
+    private const string ViewerUrl = "file:///android_asset/pdfjs/termsviewer.html";
+#endif
+
+    private readonly string documentUrl;
     private readonly string documentTitle;
     private readonly string walletAddress;
 
-    public TermsDocumentPage(string title, string gatewayUrl, string walletAddress)
+    public TermsDocumentPage(string title, string documentUrl, string walletAddress)
     {
         NavigationPage.SetHasNavigationBar(this, false);
         Shell.SetNavBarIsVisible(this, false);
@@ -36,15 +39,14 @@ public partial class TermsDocumentPage : ContentPage
         InitializeComponent();
 
         documentTitle = title;
-        this.gatewayUrl = gatewayUrl;
+        this.documentUrl = documentUrl;
         this.walletAddress = walletAddress;
-        titleSpan.Text = title;
 
-#if ANDROID
-        sourceUrl = "https://docs.google.com/viewer?embedded=true&url=" + Uri.EscapeDataString(gatewayUrl);
-#else
-        sourceUrl = gatewayUrl;
-#endif
+        topBar.Title = title;
+        topBar.Extra2Image = ImageSource.FromFile("xcavatetrackdownload.png");
+        topBar.Extra2Command = new AsyncRelayCommand(DownloadAsync);
+        topBar.Extra1Image = ImageSource.FromFile("xcavatetrash.png");
+        topBar.Extra1Command = new AsyncRelayCommand(DeleteAsync);
     }
 
     protected override void OnAppearing()
@@ -63,7 +65,11 @@ public partial class TermsDocumentPage : ContentPage
         loadingIndicator.IsVisible = true;
         loadingIndicator.IsRunning = true;
 
-        webView.Source = new UrlWebViewSource { Url = sourceUrl };
+#if ANDROID
+        webView.Source = new UrlWebViewSource { Url = ViewerUrl };
+#else
+        webView.Source = new UrlWebViewSource { Url = documentUrl };
+#endif
     }
 
     private void OnNavigating(object? sender, WebNavigatingEventArgs e)
@@ -81,7 +87,14 @@ public partial class TermsDocumentPage : ContentPage
         if (e.Result != WebNavigationResult.Success)
         {
             errorView.IsVisible = true;
+
+            return;
         }
+
+#if ANDROID
+        // The viewer shell is loaded; it can take the document now.
+        _ = RenderPdfAsync();
+#endif
     }
 
     private void OnRetryClicked(object? sender, EventArgs e)
@@ -91,12 +104,36 @@ public partial class TermsDocumentPage : ContentPage
         Load();
     }
 
-    private async void OnBackClicked(object? sender, TappedEventArgs e)
+#if ANDROID
+    private async Task RenderPdfAsync()
     {
-        await NavigationModel.PopAsync();
-    }
+        loadingIndicator.IsVisible = true;
+        loadingIndicator.IsRunning = true;
 
-    private async void OnDownloadClicked(object? sender, TappedEventArgs e)
+        try
+        {
+            using var client = new HttpClient();
+            var pdf = await client.GetByteArrayAsync(documentUrl);
+
+            // The viewer resolves to "ok" once every page is rendered; anything else
+            // (including a null evaluation result) means the document did not render.
+            var result = await webView.EvaluateJavaScriptAsync($"loadPdf('{Convert.ToBase64String(pdf)}')");
+
+            errorView.IsVisible = result is null || result.Trim('"') != "ok";
+        }
+        catch
+        {
+            errorView.IsVisible = true;
+        }
+        finally
+        {
+            loadingIndicator.IsVisible = false;
+            loadingIndicator.IsRunning = false;
+        }
+    }
+#endif
+
+    private async Task DownloadAsync()
     {
         try
         {
@@ -132,7 +169,7 @@ public partial class TermsDocumentPage : ContentPage
         }
 
         var fileName = SanitizeFileName(documentTitle) + ".pdf";
-        var request = new DownloadManager.Request(global::Android.Net.Uri.Parse(gatewayUrl));
+        var request = new DownloadManager.Request(global::Android.Net.Uri.Parse(documentUrl));
         request.SetTitle(documentTitle);
         request.SetDescription("PDF document");
         request.SetNotificationVisibility(DownloadVisibility.VisibleNotifyCompleted);
@@ -148,7 +185,7 @@ public partial class TermsDocumentPage : ContentPage
     private async Task DownloadIosAsync()
     {
         using var client = new HttpClient();
-        var bytes = await client.GetByteArrayAsync(gatewayUrl);
+        var bytes = await client.GetByteArrayAsync(documentUrl);
 
         var documentsPath = NSSearchPath.GetDirectories(NSSearchPathDirectory.DocumentDirectory, NSSearchPathDomain.User, true).FirstOrDefault()
             ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
@@ -161,7 +198,7 @@ public partial class TermsDocumentPage : ContentPage
     }
 #endif
 
-    private async void OnDeleteClicked(object? sender, TappedEventArgs e)
+    private async Task DeleteAsync()
     {
         var confirmed = await DisplayAlert(
             "Delete document",
