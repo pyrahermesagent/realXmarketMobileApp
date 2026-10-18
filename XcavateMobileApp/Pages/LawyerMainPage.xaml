@@ -115,7 +115,6 @@
                                        TranslationX="-15"
                                        AbsoluteLayout.LayoutBounds="1, 0, 20, 20"
                                        AbsoluteLayout.LayoutFlags="PositionProportional"
-                                       x:Name="arrow"
                                        InputTransparent="True" />
                                 <Image Source="xcavatecellarrow.png"
                                         IsVisible="{Binding ShowTermsUpload}"
@@ -124,7 +123,6 @@
                                         Rotation="270"
                                         AbsoluteLayout.LayoutBounds="1, 0, 20, 20"
                                         AbsoluteLayout.LayoutFlags="PositionProportional"
-                                        x:Name="arrow"
                                         InputTransparent="True" />
                             </AbsoluteLayout>
                         </card:Card.View>

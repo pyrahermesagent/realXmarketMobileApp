@@ -55,7 +55,7 @@
                 </Border.StrokeShape>
                 <Image HeightRequest="25"
                        WidthRequest="25"
-                       Source="{AppThemeBinding Light=downloadblack.svg, Dark=downloadwhite.svg}" />
+                       Source="xcavatedownload.png" />
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnDownloadClicked" />
                 </Border.GestureRecognizers>
@@ -72,7 +72,7 @@
                 </Border.StrokeShape>
                 <Image HeightRequest="25"
                        WidthRequest="25"
-                       Source="{AppThemeBinding Light=trashblack.svg, Dark=trashwhite.svg}" />
+                       Source="xcavatetrash.png" />
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnDeleteClicked" />
                 </Border.GestureRecognizers>
