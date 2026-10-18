@@ -494,25 +494,15 @@ public partial class LawyerMainPageViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ShowTermsUpload))]
     [NotifyPropertyChangedFor(nameof(ShowTermsUploaded))]
     [NotifyPropertyChangedFor(nameof(ShowTermsBusy))]
-    [NotifyPropertyChangedFor(nameof(ShowTermsError))]
     private bool termsBusy;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowTermsUpload))]
-    [NotifyPropertyChangedFor(nameof(ShowTermsUploaded))]
-    [NotifyPropertyChangedFor(nameof(ShowTermsBusy))]
-    [NotifyPropertyChangedFor(nameof(ShowTermsError))]
-    private string? termsError;
 
     public bool ShowTermsBusy => TermsBusy;
 
-    public bool ShowTermsError => !TermsBusy && TermsError is not null;
-
-    /// <summary>No document on record and no error: offer the upload button.</summary>
-    public bool ShowTermsUpload => !TermsBusy && TermsError is null && TermsDocument is null;
+    /// <summary>No document on record: offer the upload button.</summary>
+    public bool ShowTermsUpload => !TermsBusy && TermsDocument is null;
 
     /// <summary>A document is on record: its name, date and the View/Change actions.</summary>
-    public bool ShowTermsUploaded => !TermsBusy && TermsError is null && TermsDocument is not null;
+    public bool ShowTermsUploaded => !TermsBusy && TermsDocument is not null;
 
     public string TermsFileNameText => TermsDocument?.FileName ?? string.Empty;
 
@@ -522,7 +512,8 @@ public partial class LawyerMainPageViewModel : ObservableObject
 
     /// <summary>
     /// The card's refresh: GET the wallet's terms document. 404 (none yet) is the normal
-    /// empty state; any other failure becomes the card's error state with a retry.
+    /// empty state; any other failure surfaces through the message popup and leaves the
+    /// previous document (if any) on the card.
     /// </summary>
     private async Task LoadTermsDocumentAsync(CancellationToken token)
     {
@@ -533,7 +524,6 @@ public partial class LawyerMainPageViewModel : ObservableObject
             MainThread.BeginInvokeOnMainThread(() =>
             {
                 TermsDocument = null;
-                TermsError = null;
             });
             return;
         }
@@ -545,7 +535,6 @@ public partial class LawyerMainPageViewModel : ObservableObject
             MainThread.BeginInvokeOnMainThread(() =>
             {
                 TermsDocument = info;
-                TermsError = null;
             });
         }
         catch (OperationCanceledException)
@@ -558,30 +547,7 @@ public partial class LawyerMainPageViewModel : ObservableObject
             Console.WriteLine(ex);
 
             MainThread.BeginInvokeOnMainThread(() =>
-            {
-                TermsError = "The terms document could not be loaded.";
-            });
-        }
-    }
-
-    [RelayCommand]
-    private async Task RetryTermsLoadAsync()
-    {
-        if (TermsBusy)
-        {
-            return;
-        }
-
-        TermsBusy = true;
-        TermsError = null;
-
-        try
-        {
-            await LoadTermsDocumentAsync(CancellationToken.None).ConfigureAwait(false);
-        }
-        finally
-        {
-            MainThread.BeginInvokeOnMainThread(() => TermsBusy = false);
+                ShowPopup("Could not load terms", "The terms document could not be loaded. Pull down to try again."));
         }
     }
 
@@ -657,7 +623,6 @@ public partial class LawyerMainPageViewModel : ObservableObject
         await MainThread.InvokeOnMainThreadAsync(() =>
         {
             TermsBusy = true;
-            TermsError = null;
         });
 
         try

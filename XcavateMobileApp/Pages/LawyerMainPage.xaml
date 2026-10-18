@@ -72,18 +72,12 @@
                                                                 x:Name="balanceCellView"/>
                     </Grid>
 
-                    <!-- The lawyer's terms PDF: one document per wallet, pinned to IPFS by
-                         the profile API. The card swaps between its four states - upload
-                         offer, uploaded document, busy, error - on the view model's flags. -->
-                    <Border Padding="15"
-                            BackgroundColor="{AppThemeBinding Light={StaticResource CardBackgroundColorLight}, Dark={StaticResource CardBackgroundColorDark}}"
-                            Stroke="{StaticResource CardBorderColor}"
-                            StrokeThickness="{StaticResource CardBorderThickness}">
-                        <Border.StrokeShape>
-                            <RoundRectangle CornerRadius="{StaticResource CardCornerRadius}" />
-                        </Border.StrokeShape>
-
-                        <VerticalStackLayout Spacing="8">
+                    <!-- The lawyer's terms PDF: one document per wallet, stored through
+                         the profile API. The card swaps between its three states - upload
+                         offer, uploaded document, busy - on the view model's flags. -->
+                    <card:Card CardPadding="15">
+                        <card:Card.View>
+                            <VerticalStackLayout Spacing="8">
                             <Label Text="Terms document"
                                    FontAttributes="Bold"
                                    FontSize="16"
@@ -130,21 +124,9 @@
                                                IsRunning="{Binding ShowTermsBusy}"
                                                HeightRequest="30"
                                                Color="{StaticResource Primary}" />
-
-                            <!-- The last load failed; the previous document (if any) stays
-                                 on the card underneath, this state replaces it until a
-                                 retry succeeds. -->
-                            <VerticalStackLayout Spacing="8"
-                                                 IsVisible="{Binding ShowTermsError}">
-                                <Label Text="{Binding TermsError}"
-                                       TextColor="{StaticResource DangerousRed}"
-                                       HorizontalTextAlignment="Center" />
-                                <buttons:ElevatedButton Text="Try again"
-                                                        ButtonState="Enabled"
-                                                        Command="{Binding RetryTermsLoadCommand}" />
                             </VerticalStackLayout>
-                        </VerticalStackLayout>
-                    </Border>
+                        </card:Card.View>
+                    </card:Card>
 
                     <!--
                         Headless on purpose. The Solana cell above replaced this one visually, but
