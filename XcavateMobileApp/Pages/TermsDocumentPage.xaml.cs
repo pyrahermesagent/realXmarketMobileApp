@@ -2,7 +2,6 @@ using CommunityToolkit.Maui.Alerts;
 using CommunityToolkit.Mvvm.Input;
 using PlutoFramework.Model;
 using PlutoFramework.Model.Xcavate.Profile;
-using System.Linq;
 
 #if ANDROID
 using Android.App;
@@ -43,7 +42,7 @@ public partial class TermsDocumentPage : ContentPage
         this.walletAddress = walletAddress;
 
         topBar.Title = title;
-        topBar.Extra2Image = ImageSource.FromFile("xcavatetrackdownload.png");
+        topBar.Extra2Image = ImageSource.FromFile("xcavatedownload.png");
         topBar.Extra2Command = new AsyncRelayCommand(DownloadAsync);
         topBar.Extra1Image = ImageSource.FromFile("xcavatetrash.png");
         topBar.Extra1Command = new AsyncRelayCommand(DeleteAsync);
