@@ -11,7 +11,7 @@
         <Grid Grid.Row="0"
               Padding="10"
               ColumnSpacing="10"
-              ColumnDefinitions="35,*">
+              ColumnDefinitions="35,*,35,35">
             <Border Grid.Column="0"
                     HeightRequest="35"
                     WidthRequest="35"
@@ -43,6 +43,40 @@
                     </FormattedString>
                 </Label.FormattedText>
             </Label>
+
+            <Border Grid.Column="2"
+                    HeightRequest="35"
+                    WidthRequest="35"
+                    BackgroundColor="#1A4E4E4E"
+                    StrokeThickness="0"
+                    Padding="5">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="17.5" />
+                </Border.StrokeShape>
+                <Image HeightRequest="25"
+                       WidthRequest="25"
+                       Source="{AppThemeBinding Light=downloadblack.svg, Dark=downloadwhite.svg}" />
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnDownloadClicked" />
+                </Border.GestureRecognizers>
+            </Border>
+
+            <Border Grid.Column="3"
+                    HeightRequest="35"
+                    WidthRequest="35"
+                    BackgroundColor="#1A4E4E4E"
+                    StrokeThickness="0"
+                    Padding="5">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="17.5" />
+                </Border.StrokeShape>
+                <Image HeightRequest="25"
+                       WidthRequest="25"
+                       Source="{AppThemeBinding Light=trashblack.svg, Dark=trashwhite.svg}" />
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnDeleteClicked" />
+                </Border.GestureRecognizers>
+            </Border>
         </Grid>
 
         <Grid Grid.Row="1">

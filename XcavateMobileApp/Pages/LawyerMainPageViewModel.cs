@@ -655,7 +655,7 @@ public partial class LawyerMainPageViewModel : ObservableObject
             return;
         }
 
-        await NavigationModel.PushAsync(new TermsDocumentPage("Terms document", TermsDocument.Url));
+        await NavigationModel.PushAsync(new TermsDocumentPage("Terms document", TermsDocument.Url, KeysModel.GetSolanaAddress()));
     }
 
     /// <summary>
