@@ -8,6 +8,7 @@ using System.Linq;
 using Android.App;
 using Android.Content;
 using Android.OS;
+using System.Diagnostics;
 #endif
 
 #if IOS
@@ -25,6 +26,10 @@ public partial class TermsDocumentPage : ContentPage
 {
 #if ANDROID
     private const string ViewerUrl = "file:///android_asset/pdfjs/termsviewer.html";
+
+    // Upper bound for the pdf.js render + status polling in RenderPdfAsync; exceeding it
+    // shows the retry view.
+    private static readonly TimeSpan RenderTimeout = TimeSpan.FromSeconds(60);
 #endif
 
     private readonly string documentUrl;
@@ -115,11 +120,24 @@ public partial class TermsDocumentPage : ContentPage
             using var client = new HttpClient();
             var pdf = await client.GetByteArrayAsync(documentUrl);
 
-            // The viewer resolves to "ok" once every page is rendered; anything else
-            // (including a null evaluation result) means the document did not render.
-            var result = await webView.EvaluateJavaScriptAsync($"loadPdf('{Convert.ToBase64String(pdf)}')");
+            // loadPdf only starts rendering and returns synchronously: evaluateJavascript
+            // cannot await a Promise's value, so the outcome is polled from getPdfStatus()
+            // instead — "ok" once every page is rendered, "error: ..." on failure.
+            await webView.EvaluateJavaScriptAsync($"loadPdf('{Convert.ToBase64String(pdf)}')");
 
-            errorView.IsVisible = result is null || result.Trim('"') != "ok";
+            var status = "pending";
+            var stopwatch = Stopwatch.StartNew();
+
+            while (stopwatch.Elapsed < RenderTimeout && status is "pending" or "loading")
+            {
+                await Task.Delay(250);
+
+                // A null evaluation result is treated as still-pending, not as failure:
+                // the loop is bounded by RenderTimeout, which shows the retry view.
+                status = (await webView.EvaluateJavaScriptAsync("getPdfStatus()"))?.Trim('"') ?? "pending";
+            }
+
+            errorView.IsVisible = status != "ok";
         }
         catch
         {

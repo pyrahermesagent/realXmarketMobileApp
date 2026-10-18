@@ -33,40 +33,54 @@
     <script src="pdf.min.js"></script>
     <script src="pdf.worker.min.js"></script>
     <script>
-        // Called from TermsDocumentPage with the Base64 of the downloaded PDF. Resolves to
-        // the string "ok" or to "error: <message>" so the page can show its retry view.
-        async function loadPdf(base64) {
-            try {
-                var binary = atob(base64);
-                var data = new Uint8Array(binary.length);
-                for (var i = 0; i < binary.length; i++) {
-                    data[i] = binary.charCodeAt(i);
-                }
+        var pdfStatus = 'pending';
 
-                var pdf = await pdfjsLib.getDocument({ data: data }).promise;
-                var container = document.getElementById('document');
-                var cssWidth = document.documentElement.clientWidth;
-                var pixelRatio = window.devicePixelRatio || 1;
+        // Called from TermsDocumentPage with the Base64 of the downloaded PDF. Starts
+        // rendering and returns synchronously: evaluateJavascript cannot await a Promise's
+        // value, so the outcome is recorded in pdfStatus for the page to poll through
+        // getPdfStatus() — "pending"/"loading" while working, then "ok" or "error: <message>".
+        function loadPdf(base64) {
+            pdfStatus = 'loading';
 
-                for (var pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
-                    var page = await pdf.getPage(pageNumber);
-                    var pageSize = page.getViewport({ scale: 1 });
-                    var viewport = page.getViewport({ scale: (cssWidth / pageSize.width) * pixelRatio });
+            renderPdf(base64).then(
+                function (outcome) { pdfStatus = outcome; },
+                function (error) {
+                    pdfStatus = 'error: ' + (error && error.message ? error.message : String(error));
+                });
+        }
 
-                    var canvas = document.createElement('canvas');
-                    canvas.width = Math.floor(viewport.width);
-                    canvas.height = Math.floor(viewport.height);
-                    canvas.style.width = cssWidth + 'px';
-                    canvas.style.height = Math.floor(cssWidth * pageSize.height / pageSize.width) + 'px';
-                    container.appendChild(canvas);
+        function getPdfStatus() {
+            return pdfStatus;
+        }
 
-                    await page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise;
-                }
-
-                return 'ok';
-            } catch (error) {
-                return 'error: ' + (error && error.message ? error.message : String(error));
+        async function renderPdf(base64) {
+            var binary = atob(base64);
+            var data = new Uint8Array(binary.length);
+            for (var i = 0; i < binary.length; i++) {
+                data[i] = binary.charCodeAt(i);
             }
+
+            var pdf = await pdfjsLib.getDocument({ data: data }).promise;
+            var container = document.getElementById('document');
+            var cssWidth = document.documentElement.clientWidth;
+            var pixelRatio = window.devicePixelRatio || 1;
+
+            for (var pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+                var page = await pdf.getPage(pageNumber);
+                var pageSize = page.getViewport({ scale: 1 });
+                var viewport = page.getViewport({ scale: (cssWidth / pageSize.width) * pixelRatio });
+
+                var canvas = document.createElement('canvas');
+                canvas.width = Math.floor(viewport.width);
+                canvas.height = Math.floor(viewport.height);
+                canvas.style.width = cssWidth + 'px';
+                canvas.style.height = Math.floor(cssWidth * pageSize.height / pageSize.width) + 'px';
+                container.appendChild(canvas);
+
+                await page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise;
+            }
+
+            return 'ok';
         }
     </script>
 </body>
