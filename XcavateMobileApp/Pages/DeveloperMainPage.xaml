@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="XcavateMobileApp.Pages.DeveloperMainPage"
+             xmlns:txanalyzer="clr-namespace:PlutoFramework.Components.TransactionAnalyzer;assembly=PlutoFramework"
+             xmlns:networkselect="clr-namespace:PlutoFramework.Components.NetworkSelect;assembly=PlutoFramework"
+             xmlns:transferview="clr-namespace:PlutoFramework.Components.TransferView;assembly=PlutoFramework"
+             xmlns:dappconnection="clr-namespace:PlutoFramework.Components.DAppConnection;assembly=PlutoFramework"
+             xmlns:messagepopup="clr-namespace:PlutoFramework.Components.MessagePopup;assembly=PlutoFramework"
+             xmlns:transactionrequest="clr-namespace:PlutoFramework.Components.TransactionRequest;assembly=PlutoFramework"
+             xmlns:addressview="clr-namespace:PlutoFramework.Components.AddressView;assembly=PlutoFramework"
+             xmlns:staking="clr-namespace:PlutoFramework.Components.Staking;assembly=PlutoFramework"
+             xmlns:vault="clr-namespace:PlutoFramework.Components.Vault;assembly=PlutoFramework"
+             xmlns:extrinsic="clr-namespace:PlutoFramework.Components.Extrinsic;assembly=PlutoFramework"
+             xmlns:xcavate="clr-namespace:PlutoFramework.Components.Xcavate;assembly=PlutoFramework"
+             xmlns:faucet="clr-namespace:PlutoFramework.Components.Faucet;assembly=PlutoFramework"
+             xmlns:xcavatecells="clr-namespace:PlutoFramework.Components.XcavateProperty.Cells;assembly=PlutoFramework"
+             xmlns:xcavateproperty="clr-namespace:PlutoFramework.Components.XcavateProperty;assembly=PlutoFramework"
+             xmlns:buttons="clr-namespace:PlutoFramework.Components.Buttons;assembly=PlutoFramework"
+             xmlns:components="clr-namespace:XcavateMobileApp.Components"
+             xmlns:account="clr-namespace:PlutoFramework.Components.Account;assembly=PlutoFramework"
+             xmlns:keys="clr-namespace:PlutoFramework.Components.Keys;assembly=PlutoFramework"
+             xmlns:password="clr-namespace:PlutoFramework.Components.Password;assembly=PlutoFramework"
+             xmlns:kilt="clr-namespace:PlutoFramework.Components.Kilt;assembly=PlutoFramework"
+             xmlns:sumsub="clr-namespace:PlutoFramework.Components.Sumsub;assembly=PlutoFramework"
+             xmlns:card="clr-namespace:PlutoFramework.Components.Card;assembly=PlutoFramework"
+             xmlns:loading="clr-namespace:PlutoFramework.Components.Loading;assembly=PlutoFramework"
+             xmlns:animations="clr-namespace:PlutoFramework.Components.Animations;assembly=PlutoFramework"
+             xmlns:solanacomponents="clr-namespace:PlutoFramework.Components.Solana;assembly=PlutoFramework"
+             xmlns:solanatransfer="clr-namespace:PlutoFramework.Components.Solana.Transfer;assembly=PlutoFramework"
+             BackgroundColor="{AppThemeBinding Light=White, Dark=#0a0a0a}"
+             Shell.PresentationMode="NotAnimated"
+             HideSoftInputOnTapped="True">
+
+    <AbsoluteLayout AbsoluteLayout.LayoutBounds="0.5, 0.5, 1, 1"
+                    AbsoluteLayout.LayoutFlags="All">
+        <Image AbsoluteLayout.LayoutBounds="0.5, 0.5, 1, 1"
+               AbsoluteLayout.LayoutFlags="All"
+               Source="{AppThemeBinding Light=whitebackground.png, Dark=darkbackground.png}"
+               Opacity="{AppThemeBinding Light=0.96}"
+               Aspect="AspectFill" />
+
+        <RefreshView x:Name="mainRefreshView"
+                     AbsoluteLayout.LayoutBounds="0.5, 0.5, 1, 1"
+                     AbsoluteLayout.LayoutFlags="All"
+                     Margin="0,65,0,65"
+                     Command="{Binding RefreshCommand}"
+                     RefreshColor="Transparent"
+                     IsRefreshing="{Binding IsRefreshing}">
+            <RefreshView.Behaviors>
+                <animations:PullProgressBehavior x:Name="mainPullProgress" />
+            </RefreshView.Behaviors>
+            <ScrollView x:Name="mainScrollView"
+                        AbsoluteLayout.LayoutBounds="0.5, 0.5, 1, 1"
+                        AbsoluteLayout.LayoutFlags="All"
+                        Scrolled="OnMainScrollViewScrolled">
+                <VerticalStackLayout x:Name="stackLayout"
+                                     Spacing="15"
+                                     Padding="20, 15, 20, 100">
+                    <xcavate:RiskWarningView HeightRequest="90" />
+
+                    <dappconnection:DAppConnectionView />
+
+                    <!-- The developer's two figures. Both are the indexer's own
+                         totalCount on their filter, so they stay put whichever tab the
+                         list below is on. -->
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                        <xcavate:XcavateCell Title="Active listed"
+                                             Value="{Binding ActiveListedText}"
+                                             Command="{Binding SelectForSaleCommand}"
+                                             Grid.Column="0" />
+
+                        <xcavate:XcavateCell Title="Properties sold"
+                                             Value="{Binding SoldCountText}"
+                                             Command="{Binding SelectSoldCommand}"
+                                             Grid.Column="1" />
+                    </Grid>
+
+                    <solanacomponents:SolanaBalanceCellView x:Name="balanceCellView" />
+
+                    <!--
+                        Headless on purpose. The Solana cell above replaced this one visually, but
+                        this is still the only view that populates AssetsModel.AssetsDict for
+                        existing Substrate users - the Substrate BalancePage, BuyPropertyTokensViewModel
+                        and AssetSelectButtonViewModel all read that dictionary. IsVisible="False"
+                        makes it Visibility.Collapsed, so VerticalStackLayout skips it for both
+                        measure and spacing: it loads, it does not lay out.
+                    -->
+                    <xcavatecells:BalanceCellView x:Name="substrateBalanceCellView"
+                                                  IsVisible="False" />
+
+                    <VerticalStackLayout Spacing="5">
+                        <!--
+                            Five lifecycle filters, mutually exclusive and one always on -
+                            the query needs its filter argument decided, so the active pill
+                            cannot be tapped off. They scroll sideways because five pills do
+                            not fit a phone width in one row.
+                        -->
+                        <ScrollView Orientation="Horizontal"
+                                    Margin="0,0,0,5"
+                                    HorizontalScrollBarVisibility="Never">
+                            <HorizontalStackLayout Spacing="10">
+                                <buttons:ElevatedButton Text="All"
+                                                        Command="{Binding SelectAllCommand}"
+                                                        ButtonState="{Binding AllButtonState}"
+                                                        HeightRequest="36"
+                                                        CornerRadius="18" />
+                                <buttons:ElevatedButton Text="Pending"
+                                                        Command="{Binding SelectPendingCommand}"
+                                                        ButtonState="{Binding PendingButtonState}"
+                                                        HeightRequest="36"
+                                                        CornerRadius="18" />
+                                <buttons:ElevatedButton Text="For sale"
+                                                        Command="{Binding SelectForSaleCommand}"
+                                                        ButtonState="{Binding ForSaleButtonState}"
+                                                        HeightRequest="36"
+                                                        CornerRadius="18" />
+                                <buttons:ElevatedButton Text="Sold"
+                                                        Command="{Binding SelectSoldCommand}"
+                                                        ButtonState="{Binding SoldButtonState}"
+                                                        HeightRequest="36"
+                                                        CornerRadius="18" />
+                                <buttons:ElevatedButton Text="Ended"
+                                                        Command="{Binding SelectEndedCommand}"
+                                                        ButtonState="{Binding EndedButtonState}"
+                                                        HeightRequest="36"
+                                                        CornerRadius="18" />
+                            </HorizontalStackLayout>
+                        </ScrollView>
+
+                        <!-- Names the list the pills above just selected: the pills are the
+                             control, this is the caption for what is underneath them. -->
+                        <Label Text="{Binding ActiveFilterLabel}"
+                               FontAttributes="Bold"
+                               Margin="0, 5, 0, 5"
+                               InputTransparent="True" />
+
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding DeveloperProperties}"
+                                             Spacing="15">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate>
+                                    <xcavateproperty:PropertyThumbnailView XcavateNftWrapper="{Binding .}" />
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+
+                        <loading:SkeletonCardView ItemMargin="0,0,0,10"
+                                                  IsVisible="{Binding ShowSkeleton}" />
+                        <Label Text="{Binding EmptyListMessage}"
+                               TextColor="#A6A6A6"
+                               HorizontalOptions="Center"
+                               Margin="20, 40, 20, 40"
+                               IsVisible="{Binding NoProperties}"
+                               HorizontalTextAlignment="Center"/>
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </ScrollView>
+        </RefreshView>
+
+        <animations:ParticleStreamView x:Name="particleStreamView"
+                                       AbsoluteLayout.LayoutBounds="0, 65, 1, 100"
+                                       AbsoluteLayout.LayoutFlags="XProportional,WidthProportional"
+                                       ParticleColor="{StaticResource Primary}"
+                                       Playing="{Binding IsRefreshing}"
+                                       PullProgress="{Binding Source={x:Reference mainPullProgress}, Path=Progress}" />
+
+        <components:XcavateMainPageTopNavigationBarView />
+
+        <card:BottomPillBackgroundView />
+
+        <card:TopPillBackgroundView />
+
+        <extrinsic:ExtrinsicStatusStackLayout />
+
+        <vault:VaultSignView />
+
+        <staking:StakingRegistrationRequestView />
+
+        <xcavate:XcavateNavigationBarView />
+
+        <messagepopup:MessagePopupView />
+
+        <xcavateproperty:PropertyMarketplaceFilterPopupView />
+
+        <xcavateproperty:PropertyMarketplaceSelectionPopupView />
+
+        <xcavateproperty:SendSharesPopupView />
+
+        <networkselect:MultiNetworkSelectView x:Name="networksView"  IsVisible="False" />
+
+        <account:NoAccountPopup ZIndex="10" />
+
+        <!-- Raised by the messenger gate (MessengerAccessModel) from the top navigation
+             bar; hosted here because this page is not a PageTemplate. -->
+        <keys:X25519KeyRequiredPopupView ZIndex="10" />
+
+        <solanacomponents:ConnectMwaPopupView ZIndex="10" />
+
+        <kilt:NoDidPopupView ZIndex="10" />
+
+        <xcavate:UserProfileNotCreatedPopupView ZIndex="10" />
+
+        <xcavate:NotWhitelistedPopupView ZIndex="10" />
+
+        <!-- Above the full-screen loading overlay (ZIndex=20): the user must always be
+             able to enter a password, even while something is loading. -->
+        <password:EnterPasswordPopupView ZIndex="1000"/>
+
+        <loading:FullPageLoadingView ZIndex="20" />
+
+        <addressview:AddressQrCodeView />
+
+        <transferview:TransferView />
+
+        <solanatransfer:SolanaTransferView />
+
+        <solanatransfer:SolanaTokenSelectView />
+
+        <dappconnection:DAppConnectionRequestView />
+
+        <transactionrequest:MessageSignRequestView />
+
+        <txanalyzer:TransactionAnalyzerConfirmationView />
+
+        <networkselect:NetworkSelectPopup />
+    </AbsoluteLayout>
+</ContentPage>

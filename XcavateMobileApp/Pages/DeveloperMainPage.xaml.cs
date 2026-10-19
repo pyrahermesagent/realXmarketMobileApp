@@ -1,0 +1,180 @@
+using Microsoft.Maui.Layouts;
+using PlutoFramework;
+using PlutoFramework.Components.Keys;
+using PlutoFramework.Components.NetworkSelect;
+using PlutoFramework.Components.Solana;
+using PlutoFramework.Model;
+using PlutoFrameworkCore.Solana;
+
+namespace XcavateMobileApp.Pages;
+
+/// <summary>
+/// The developer landing page behind the <c>//DeveloperAccount</c> shell route. Mirrors
+/// <see cref="LawyerMainPage"/>: same skeleton, overlay chrome and loading conventions,
+/// developer-specific content (the two figure cells and the lifecycle-filtered list of the
+/// wallet's own creations) driven by <see cref="DeveloperMainPageViewModel"/>.
+/// </summary>
+public partial class DeveloperMainPage : ContentPage, IPlutoFrameworkMainPage
+{
+    private const double HeaderHeight = 65;
+
+    /// <summary>
+    /// Everything MainPageLayoutUpdater loads on this page. <c>substrateBalanceCellView</c> is
+    /// invisible and belongs here purely as a loader: it is the only caller of
+    /// <c>AssetsModel.LoadAssets</c> and <c>AssetsModel.GetBalanceAsync</c>, so dropping it from
+    /// this list leaves <c>AssetsModel.AssetsDict</c> empty for existing Substrate users.
+    /// </summary>
+    public IList<IView> Views => [balanceCellView, substrateBalanceCellView];
+    public static MultiNetworkSelectView? NetworksView { get; set; }
+
+    private readonly DeveloperMainPageViewModel viewModel;
+    private CancellationTokenSource? _initializationCts;
+    private bool _isInitialized;
+
+    public DeveloperMainPage()
+    {
+        NavigationPage.SetHasNavigationBar(this, false);
+        Shell.SetNavBarIsVisible(this, false);
+
+        InitializeComponent();
+
+        viewModel = DependencyService.Get<DeveloperMainPageViewModel>();
+        BindingContext = viewModel;
+
+        NetworksView = networksView;
+
+        MainPageLayoutUpdater.MainPage = this;
+
+        ApplyDevnetBannerOffset();
+
+        SolanaNetworkModel.ClusterChanged += OnClusterChanged;
+
+        X25519WarningModel.AvailabilityChanged += OnX25519AvailabilityChanged;
+
+        Loaded += OnLoaded;
+    }
+
+    private void OnClusterChanged(object? sender, SolanaCluster cluster)
+    {
+        // Same orphan guard as SolanaBalanceCellView.OnClusterChanged: a page left behind
+        // when Application.Current.MainPage was replaced stays subscribed to the static
+        // event forever.
+        if (Handler is null)
+        {
+            return;
+        }
+
+        MainThread.BeginInvokeOnMainThread(ApplyDevnetBannerOffset);
+    }
+
+    private void OnX25519AvailabilityChanged(object? sender, EventArgs e)
+    {
+        // Same orphan guard as OnClusterChanged above.
+        if (Handler is null)
+        {
+            return;
+        }
+
+        MainThread.BeginInvokeOnMainThread(ApplyDevnetBannerOffset);
+    }
+
+    /// <summary>
+    /// The header grows by the warning strips' heights while they are showing, so the
+    /// content below it must move down by the same amount.
+    /// </summary>
+    private void ApplyDevnetBannerOffset()
+    {
+        var headerHeight = HeaderHeight + SolanaDevnetWarningView.ExtraHeight + X25519MissingWarningView.ExtraHeight;
+
+        mainRefreshView.Margin = new Thickness(0, headerHeight, 0, 65);
+
+        AbsoluteLayout.SetLayoutBounds(particleStreamView, new Rect(0, headerHeight, 1, 100));
+    }
+
+    private async void OnLoaded(object? sender, EventArgs e)
+    {
+        if (_isInitialized)
+        {
+            return;
+        }
+
+        _isInitialized = true;
+
+        _initializationCts?.Cancel();
+        _initializationCts?.Dispose();
+        _initializationCts = new CancellationTokenSource();
+        var cancellationToken = _initializationCts.Token;
+
+        // Let the page complete the first layout pass before loading remote data.
+        try
+        {
+            await Task.Delay(100, cancellationToken);
+
+            // Prioritize the page's own data path so first content appears quickly.
+            await viewModel.RefreshAsync(cancellationToken);
+
+            // Views on this page are loaded by MainPageLayoutUpdater, which is otherwise only
+            // reached through the Substrate warm-up. The Solana balance must not depend on that.
+            await MainPageLayoutUpdater.ViewLocalLoadAsync(cancellationToken);
+
+            _ = WarmupConnectedClientsAsync(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // Page disappeared while initialization work was in flight.
+        }
+    }
+
+    private static async Task WarmupConnectedClientsAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await SubstrateClientModel.ChangeConnectedClientsAsync(
+                EndpointsModel.GetSelectedEndpointKeys(),
+                cancellationToken,
+                reload: true).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // Page was closed before warmup completed.
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+        }
+    }
+
+    protected override bool OnBackButtonPressed()
+    {
+        // A visible popup (e.g. the transfer or filter popup) is dismissed before the
+        // page itself goes back.
+        return PopupManager.TryCloseTopPopup() || base.OnBackButtonPressed();
+    }
+
+    protected override void OnDisappearing()
+    {
+        _initializationCts?.Cancel();
+        _initializationCts?.Dispose();
+        _initializationCts = null;
+
+        viewModel.CancelOngoingLoading();
+        base.OnDisappearing();
+    }
+
+    private async void OnMainScrollViewScrolled(object? sender, ScrolledEventArgs e)
+    {
+        if (sender is not ScrollView scrollView)
+        {
+            return;
+        }
+
+        var remainingHeight = scrollView.ContentSize.Height - (scrollView.ScrollY + scrollView.Height);
+
+        if (remainingHeight > 280)
+        {
+            return;
+        }
+
+        await viewModel.TryLoadMorePropertiesAsync(CancellationToken.None);
+    }
+}

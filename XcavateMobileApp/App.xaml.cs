@@ -214,6 +214,7 @@ namespace XcavateMobileApp
 
             DependencyService.Register<InvestorMainPageViewModel>();
             DependencyService.Register<LawyerMainPageViewModel>();
+            DependencyService.Register<DeveloperMainPageViewModel>();
 
             DependencyService.Register<TermsUploadFailedPopupViewModel>();
             PopupManager.TrackPopup(DependencyService.Get<TermsUploadFailedPopupViewModel>());

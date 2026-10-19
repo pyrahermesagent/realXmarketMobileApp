@@ -13,6 +13,9 @@
     <ShellContent ContentTemplate="{DataTemplate pages:LawyerMainPage}"
                   Route="LawyerAccount" >
     </ShellContent>
+    <ShellContent ContentTemplate="{DataTemplate pages:DeveloperMainPage}"
+                  Route="DeveloperAccount" >
+    </ShellContent>
     <ShellContent ContentTemplate="{DataTemplate pages:NoAccountMainPage}"
                   Route="NoAccount" >
     </ShellContent>
