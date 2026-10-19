@@ -125,18 +125,7 @@ public partial class DeveloperMainPageViewModel : ObservableObject
     /// filter argument decided, so the pills replace each other rather than toggling off.
     /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ActiveFilterLabel))]
     private DeveloperPropertyFilter activeFilter = DeveloperPropertyFilter.All;
-
-    /// <summary>The list heading: the active filter's own wording.</summary>
-    public string ActiveFilterLabel => ActiveFilter switch
-    {
-        DeveloperPropertyFilter.Pending => "Pending",
-        DeveloperPropertyFilter.ForSale => "For sale",
-        DeveloperPropertyFilter.Sold => "Sold",
-        DeveloperPropertyFilter.Ended => "Ended",
-        _ => "All properties",
-    };
 
     // ── Filter pills ──
 

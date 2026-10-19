@@ -128,13 +128,6 @@
                             </HorizontalStackLayout>
                         </ScrollView>
 
-                        <!-- Names the list the pills above just selected: the pills are the
-                             control, this is the caption for what is underneath them. -->
-                        <Label Text="{Binding ActiveFilterLabel}"
-                               FontAttributes="Bold"
-                               Margin="0, 5, 0, 5"
-                               InputTransparent="True" />
-
                         <VerticalStackLayout BindableLayout.ItemsSource="{Binding DeveloperProperties}"
                                              Spacing="15">
                             <BindableLayout.ItemTemplate>
