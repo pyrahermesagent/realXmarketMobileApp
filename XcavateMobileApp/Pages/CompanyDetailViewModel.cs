@@ -176,9 +176,6 @@ public partial class CompanyDetailViewModel : ObservableObject
         MainViewModel.SelectCompany(item.Company);
         SyncFromMainViewModel();
     }
-
-    [RelayCommand]
-    private Task AddCompanyAsync() => NavigationModel.PushAsync(new CompanyFormPage());
 }
 
 /// <summary>One row of the "Your companies" switch list on <see cref="CompanyDetailPage"/>.</summary>

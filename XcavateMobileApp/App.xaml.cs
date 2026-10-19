@@ -118,6 +118,9 @@ namespace XcavateMobileApp
 
             NavigationModel.NavigateToUserPageAsync = NavigateToUserPageAsync;
 
+            // Switching the main-page role in Settings applies immediately, no restart.
+            MainPageRoleModel.OverrideChanged += () => _ = RouteToRoleMainPageAsync();
+
             PlutoConfigurationModel.GenerateNewAccountAsync = GenerateNewAccountAsync;
             PlutoConfigurationModel.WhitelistedTokens = [
                 // XCAV
@@ -243,9 +246,9 @@ namespace XcavateMobileApp
         }
 
         /// <summary>
-        /// Applies the selected main-page route when it differs from the investor route the
-        /// shell opens on. No-op while onboarding is still showing (no XcavateAppShell yet)
-        /// and tolerant of every failure - a failed check must never take down startup.
+        /// Applies the selected main-page route when it differs from the route the shell is
+        /// currently showing. No-op while onboarding is still showing (no XcavateAppShell
+        /// yet) and tolerant of every failure - a failed check must never take down startup.
         /// </summary>
         internal static async Task RouteToRoleMainPageAsync()
         {
@@ -258,7 +261,12 @@ namespace XcavateMobileApp
 
                 var route = await MainPageRoleModel.GetRouteAsync();
 
-                if (route != "//Account")
+                // The shell opens on the investor route, so this is a no-op when that route
+                // is already shown. Comparing locations instead of hardcoding "//Account"
+                // also lets a Settings role change navigate back to the investor page.
+                var currentRoute = Shell.Current.CurrentState.Location.ToString().TrimEnd('/');
+
+                if (!string.Equals(currentRoute, route, StringComparison.OrdinalIgnoreCase))
                 {
                     await Shell.Current.GoToAsync(route, animate: false);
                 }

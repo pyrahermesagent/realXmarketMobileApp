@@ -4,7 +4,6 @@
                        xmlns:template="clr-namespace:PlutoFramework.Templates.PageTemplate;assembly=PlutoFramework"
                        xmlns:form="clr-namespace:PlutoFramework.Components.Form;assembly=PlutoFramework"
                        xmlns:card="clr-namespace:PlutoFramework.Components.Card;assembly=PlutoFramework"
-                       xmlns:buttons="clr-namespace:PlutoFramework.Components.Buttons;assembly=PlutoFramework"
                        x:Class="XcavateMobileApp.Pages.CompanyDetailPage"
                        Title="{Binding Title}"
                        NavigationBarExtra1Text="Edit"
@@ -91,9 +90,6 @@
                         </DataTemplate>
                     </BindableLayout.ItemTemplate>
                 </VerticalStackLayout>
-
-                <buttons:ElevatedButton Text="Add company"
-                                        Command="{Binding AddCompanyCommand}" />
             </VerticalStackLayout>
         </ScrollView>
     </template:PageTemplate.MainContent>
