@@ -89,6 +89,11 @@
                     <xcavatecells:BalanceCellView x:Name="substrateBalanceCellView"
                                                   IsVisible="False" />
 
+                    <!-- Opens the developer add-property web page (X25519WebView, chrome
+                         hidden on the web side) just below the balance card. -->
+                    <buttons:ElevatedButton Text="Add property"
+                                            Command="{Binding AddPropertyCommand}" />
+
                     <VerticalStackLayout Spacing="5">
                         <!--
                             Five lifecycle filters, mutually exclusive and one always on -

@@ -209,6 +209,20 @@ public partial class DeveloperMainPageViewModel : ObservableObject
         return Task.CompletedTask;
     }
 
+    // ── Add property ──
+
+    /// <summary>
+    /// The developer add-property web page. The chrome query parameters hide the site's own
+    /// header, footer and back button, so the native page template is the only frame around
+    /// the web view.
+    /// </summary>
+    private const string AddPropertyUrl =
+        "https://developer-devnet.realxmarket.io/developer/add-property?headerIsVisible=false&footerIsVisible=false&backButtonIsVisible=false";
+
+    [RelayCommand]
+    private Task AddPropertyAsync() => NavigationModel.PushAsync(
+        new PlutoFramework.Components.XcavateProperty.AddPropertyPage(AddPropertyUrl));
+
     // ── Refresh / paging ──
 
     [RelayCommand]
