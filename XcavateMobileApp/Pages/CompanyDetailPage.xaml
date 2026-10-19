@@ -6,9 +6,9 @@
                        xmlns:card="clr-namespace:PlutoFramework.Components.Card;assembly=PlutoFramework"
                        x:Class="XcavateMobileApp.Pages.CompanyDetailPage"
                        Title="{Binding Title}"
-                       NavigationBarExtra1Text="Edit"
+                       NavigationBarExtra1Image="xcavateedit.png"
                        NavigationBarExtra1Command="{Binding EditCommand}"
-                       NavigationBarExtra2Text="Delete"
+                       NavigationBarExtra2Image="xcavatetrash.png"
                        NavigationBarExtra2Command="{Binding DeleteCommand}">
     <template:PageTemplate.MainContent>
         <ScrollView>
