@@ -3,10 +3,12 @@ using CommunityToolkit.Mvvm.Input;
 using PlutoFramework;
 using PlutoFramework.Model;
 using PlutoFramework.Model.Xcavate;
+using PlutoFramework.Model.Xcavate.Profile;
 using PlutoFrameworkCore.Solana;
 using PlutoFrameworkCore.Xcavate;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using Company = XcavateProfile.Client.Company;
 using NftKey = (UniqueryPlus.NftTypeEnum, System.Numerics.BigInteger, System.Numerics.BigInteger);
 using XcavatePropertyModel = PlutoFramework.Components.XcavateProperty.XcavatePropertyModel;
 using DeveloperPropertyFilter = PlutoFramework.Model.Xcavate.XcavateMarketplaceIndexerModel.DeveloperPropertyFilter;
@@ -223,6 +225,151 @@ public partial class DeveloperMainPageViewModel : ObservableObject
     private Task AddPropertyAsync() => NavigationModel.PushAsync(
         new PlutoFramework.Components.XcavateProperty.AddPropertyPage(AddPropertyUrl));
 
+    // ── Company card ──
+    //
+    // The developer's company record on the profile API. A wallet may own any number of
+    // companies, so the card shows the selected one (local state - see SelectedCompanyModel)
+    // and the tap opens the detail page, where selection, editing and deletion live; with no
+    // company on record the tap opens the create form instead. Same three-state pattern as
+    // the lawyer page's terms document card.
+
+    private readonly XcavateCompanyService companyService = new();
+    private readonly List<Company> companies = [];
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowCompanyRegister))]
+    [NotifyPropertyChangedFor(nameof(ShowCompanySelected))]
+    [NotifyPropertyChangedFor(nameof(CompanyNameText))]
+    private Company? selectedCompany;
+
+    /// <summary>No company on record: offer the create form.</summary>
+    public bool ShowCompanyRegister => SelectedCompany is null;
+
+    /// <summary>A company is selected: show its name; the tap opens the detail page.</summary>
+    public bool ShowCompanySelected => SelectedCompany is not null;
+
+    public string CompanyNameText => SelectedCompany?.Name ?? string.Empty;
+
+    /// <summary>The wallet's companies as of the last load; read by the company pages.</summary>
+    public IReadOnlyList<Company> Companies => companies;
+
+    /// <summary>
+    /// The card's refresh: GET the wallet's companies. An empty list (none registered yet) is
+    /// the normal empty state; any failure is logged and leaves the previous selection (if
+    /// any) on the card - a pull-to-refresh is the retry.
+    /// </summary>
+    private async Task LoadCompaniesAsync(CancellationToken token)
+    {
+        var address = MainKeyModel.GetAddress();
+
+        if (string.IsNullOrWhiteSpace(address))
+        {
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                companies.Clear();
+                SelectedCompany = null;
+            });
+            return;
+        }
+
+        try
+        {
+            var fetched = await companyService.GetMyCompaniesAsync(token).ConfigureAwait(false);
+
+            // Awaited rather than fire-and-forget so the company pages can reload through
+            // ReloadCompaniesAsync and read a settled state straight after the await.
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                if (token.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                companies.Clear();
+                companies.AddRange(fetched);
+                SelectedCompany = ResolveSelectedCompany(address);
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when a newer refresh starts.
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Company list load error:");
+            Console.WriteLine(ex);
+        }
+    }
+
+    /// <summary>
+    /// The company the card shows: the stored selection when it still exists, the first
+    /// company otherwise (persisted, so every screen settles on the same one). No companies
+    /// clears the stored id - whatever was selected is gone.
+    /// </summary>
+    private Company? ResolveSelectedCompany(string address)
+    {
+        if (companies.Count == 0)
+        {
+            SelectedCompanyModel.SetSelectedCompanyId(address, null);
+            return null;
+        }
+
+        var storedId = SelectedCompanyModel.GetSelectedCompanyId(address);
+        var selected = companies.FirstOrDefault(company => company.CompanyId == storedId) ?? companies[0];
+
+        if (selected.CompanyId != storedId)
+        {
+            SelectedCompanyModel.SetSelectedCompanyId(address, selected.CompanyId);
+        }
+
+        return selected;
+    }
+
+    /// <summary>Re-fetch after a company mutation made on one of the company pages.</summary>
+    public Task ReloadCompaniesAsync() => LoadCompaniesAsync(CancellationToken.None);
+
+    /// <summary>
+    /// Makes <paramref name="company"/> the selected one and inserts or replaces it in the
+    /// cached list - called by the company pages after a create, an update, or a tap on the
+    /// companies list, so the card reflects the change without a server round-trip.
+    /// </summary>
+    public void SelectCompany(Company company)
+    {
+        var address = MainKeyModel.GetAddress();
+
+        if (string.IsNullOrWhiteSpace(address))
+        {
+            return;
+        }
+
+        var index = companies.FindIndex(existing => existing.CompanyId == company.CompanyId);
+
+        if (index >= 0)
+        {
+            companies[index] = company;
+        }
+        else
+        {
+            companies.Add(company);
+        }
+
+        SelectedCompanyModel.SetSelectedCompanyId(address, company.CompanyId);
+        SelectedCompany = company;
+    }
+
+    [RelayCommand]
+    private async Task CompanyActionAsync()
+    {
+        if (SelectedCompany is not null)
+        {
+            await NavigationModel.PushAsync(new CompanyDetailPage());
+        }
+        else
+        {
+            await NavigationModel.PushAsync(new CompanyFormPage());
+        }
+    }
+
     // ── Refresh / paging ──
 
     [RelayCommand]
@@ -251,6 +398,8 @@ public partial class DeveloperMainPageViewModel : ObservableObject
             await LoadMorePropertiesAsync(token).ConfigureAwait(false);
 
             await LoadFiguresAsync(token).ConfigureAwait(false);
+
+            await LoadCompaniesAsync(token).ConfigureAwait(false);
 
             await MainPageLayoutUpdater.ViewLocalLoadAsync(token).ConfigureAwait(false);
         }
